@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../../core/services/financial_calculation_engine.dart';
+import '../../../../core/services/financial_metrics.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -11,7 +13,7 @@ import '../../../../core/widgets/glass/glass_input.dart';
 import '../../application/accounts_controller.dart';
 import '../../domain/models/account_model.dart';
 
-/// VisionOS Frosted Glass Wallets & Accounts Screen.
+/// VisionOS Ultra-Premium Glass Wallets & Accounts Screen.
 class AccountsScreen extends StatefulWidget {
   final AccountsController controller;
 
@@ -138,144 +140,162 @@ class _AccountsScreenState extends State<AccountsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: const Text(
-          'Wallets & Glass Accounts',
+          'Wallets & Net Worth',
           style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
         ),
       ),
-      body: ListenableBuilder(
-        listenable: widget.controller.stateNotifier,
-        builder: (context, _) {
-          final state = widget.controller.stateNotifier.value;
+      body: ValueListenableBuilder<FinancialMetrics>(
+        valueListenable: FinancialCalculationEngine.instance.metricsNotifier,
+        builder: (context, metrics, _) {
+          return ListenableBuilder(
+            listenable: widget.controller.stateNotifier,
+            builder: (context, _) {
+              final state = widget.controller.stateNotifier.value;
 
-          if (state.isLoading && state.accounts.isEmpty) {
-            return const Center(
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                color: AppColors.primaryEmerald,
-              ),
-            );
-          }
-
-          if (state.accounts.isEmpty) {
-            return EmptyStateWidget(
-              icon: Icons.account_balance_wallet_outlined,
-              title: 'No Glass Accounts Configured',
-              description: 'Add your bank accounts, credit cards, or cash wallets to calculate Net Worth.',
-              actionLabel: 'Add First Account',
-              onActionTap: _showAddAccountModal,
-            );
-          }
-
-          return Column(
-            children: [
-              // Glass Net Worth Asset Banner Card
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: GlassCard(
-                  gradient: isDark ? AppColors.cardGradientDark : AppColors.cardGradientLight,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'TOTAL ASSETS / NET WORTH',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.0,
-                          color: Color(0xFF94A3B8),
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        AppFormatters.currency(state.totalBalance),
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      Row(
-                        children: [
-                          const Icon(Icons.account_balance_outlined, color: AppColors.primaryEmerald, size: 16),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${state.accounts.length} Active Glass Accounts Connected',
-                            style: const TextStyle(fontSize: 12, color: Color(0xFFCBD5E1)),
-                          ),
-                        ],
-                      ),
-                    ],
+              if (state.isLoading && state.accounts.isEmpty) {
+                return const Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: AppColors.primaryEmerald,
                   ),
-                ),
-              ),
+                );
+              }
 
-              const Divider(height: 1, color: Colors.transparent),
+              if (state.accounts.isEmpty) {
+                return EmptyStateWidget(
+                  icon: Icons.account_balance_wallet_outlined,
+                  title: 'No Glass Accounts Configured',
+                  description: 'Add your bank accounts, credit cards, or cash wallets to calculate Net Worth.',
+                  actionLabel: 'Add First Account',
+                  onActionTap: _showAddAccountModal,
+                );
+              }
 
-              // Account Glass List
-              Expanded(
-                child: ListView.builder(
-                  itemCount: state.accounts.length,
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-                  itemBuilder: (context, index) {
-                    final acc = state.accounts[index];
-                    final IconData icon = _getAccountIcon(acc.type);
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                      child: GlassCard(
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: Color(acc.colorValue).withValues(alpha: 0.15),
-                                borderRadius: AppRadius.borderSm,
-                                border: Border.all(color: Color(acc.colorValue).withValues(alpha: 0.3), width: 1),
-                              ),
-                              child: Icon(icon, color: Color(acc.colorValue), size: 24),
+              return Column(
+                children: [
+                  // Glass Net Worth & Liabilities Banner Card
+                  Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: GlassCard(
+                      gradient: isDark ? AppColors.cardGradientDark : AppColors.cardGradientLight,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'NET WORTH ENGINE AGGREGATION',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                              color: Color(0xFF94A3B8),
                             ),
-                            const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            AppFormatters.currency(metrics.netWorth > 0 ? metrics.netWorth : state.totalBalance),
+                            style: const TextStyle(
+                              fontSize: 34,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
                                 children: [
+                                  const Icon(Icons.arrow_upward_rounded, color: AppColors.primaryEmerald, size: 14),
+                                  const SizedBox(width: 4),
                                   Text(
-                                    acc.name,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                      color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                                    ),
-                                  ),
-                                  Text(
-                                    acc.type.name.toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                                    ),
+                                    'Assets: ${AppFormatters.currency(metrics.totalAssets > 0 ? metrics.totalAssets : state.totalBalance)}',
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
                                   ),
                                 ],
                               ),
-                            ),
-                            Text(
-                              AppFormatters.currency(acc.balance),
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                                color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                              Row(
+                                children: [
+                                  const Icon(Icons.arrow_downward_rounded, color: AppColors.expenseRed, size: 14),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Liabilities: ${AppFormatters.currency(metrics.totalLiabilities)}',
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                ),
-              ),
-            ],
+                    ),
+                  ),
+
+                  // Account Glass List
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: state.accounts.length,
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+                      itemBuilder: (context, index) {
+                        final acc = state.accounts[index];
+                        final IconData icon = _getAccountIcon(acc.type);
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                          child: GlassCard(
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: Color(acc.colorValue).withValues(alpha: 0.18),
+                                    borderRadius: AppRadius.borderSm,
+                                    border: Border.all(color: Color(acc.colorValue).withValues(alpha: 0.35), width: 1.2),
+                                  ),
+                                  child: Icon(icon, color: Color(acc.colorValue), size: 24),
+                                ),
+                                const SizedBox(width: AppSpacing.md),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        acc.name,
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w800,
+                                          color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                                        ),
+                                      ),
+                                      Text(
+                                        acc.type.name.toUpperCase(),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                  AppFormatters.currency(acc.balance),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900,
+                                    color: acc.balance < 0 ? AppColors.expenseRed : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
           );
         },
       ),

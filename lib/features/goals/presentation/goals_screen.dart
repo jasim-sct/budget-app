@@ -3,6 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/glass/ambient_background.dart';
 import '../../../core/widgets/glass/glass_card.dart';
 import '../data/goal_repository.dart';
 import '../domain/goal_model.dart';
@@ -36,46 +37,49 @@ class _GoalsScreenState extends State<GoalsScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
+    return AmbientBackground(
+      child: Scaffold(
         backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(
-          'Financial Savings Goals',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_rounded, color: AppColors.primaryEmerald),
-            onPressed: _openAddGoal,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: const Text(
+            'Financial Savings Goals',
+            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
           ),
-        ],
-      ),
-      body: ValueListenableBuilder<List<GoalModel>>(
-        valueListenable: GoalRepository.instance.goalsNotifier,
-        builder: (context, goals, _) {
-          if (goals.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add_rounded, color: AppColors.primaryEmerald),
+              onPressed: _openAddGoal,
+            ),
+          ],
+        ),
+        body: ValueListenableBuilder<List<GoalModel>>(
+          valueListenable: GoalRepository.instance.goalsNotifier,
+          builder: (context, goals, _) {
+            if (goals.isEmpty) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          return ListView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            children: [
-              Text('ACTIVE SAVINGS GOALS', style: AppTypography.labelSmall(isDark)),
-              const SizedBox(height: AppSpacing.sm),
-              ...goals.map((g) => _buildGoalCard(g, isDark)),
-              const SizedBox(height: 100),
-            ],
-          );
-        },
+            return ListView(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              children: [
+                Text('ACTIVE SAVINGS GOALS', style: AppTypography.labelSmall(isDark)),
+                const SizedBox(height: AppSpacing.sm),
+                ...goals.map((g) => _buildGoalCard(g, isDark)),
+                const SizedBox(height: 100),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildGoalCard(GoalModel goal, bool isDark) {
     final targetDt = DateTime.fromMillisecondsSinceEpoch(goal.targetDateMilliseconds);
-    final daysRemaining = targetDt.difference(DateTime.now()).inDays.clamp(1, 3650);
+    final daysRemaining = targetDt.difference(DateTime.now()).inDays;
+    final bool isOverdue = goal.isOverdue;
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -91,10 +95,14 @@ class _GoalsScreenState extends State<GoalsScreen> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryEmerald.withValues(alpha: 0.18),
+                        color: (isOverdue ? AppColors.expenseRed : AppColors.primaryEmerald).withValues(alpha: 0.18),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.flag_rounded, color: AppColors.primaryEmerald, size: 18),
+                      child: Icon(
+                        isOverdue ? Icons.warning_amber_rounded : Icons.flag_rounded,
+                        color: isOverdue ? AppColors.expenseRed : AppColors.primaryEmerald,
+                        size: 18,
+                      ),
                     ),
                     const SizedBox(width: AppSpacing.md),
                     Column(
@@ -109,10 +117,13 @@ class _GoalsScreenState extends State<GoalsScreen> {
                           ),
                         ),
                         Text(
-                          'Target: ${AppFormatters.dateShort(targetDt)} ($daysRemaining days left)',
+                          isOverdue
+                              ? 'Target: ${AppFormatters.dateShort(targetDt)} (OVERDUE)'
+                              : 'Target: ${AppFormatters.dateShort(targetDt)} (${daysRemaining.clamp(0, 3650)} days left)',
                           style: TextStyle(
                             fontSize: 12,
-                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                            fontWeight: isOverdue ? FontWeight.w800 : FontWeight.w500,
+                            color: isOverdue ? AppColors.expenseRed : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
                           ),
                         ),
                       ],
@@ -122,12 +133,16 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: AppColors.accentViolet.withValues(alpha: 0.2),
+                    color: (isOverdue ? AppColors.expenseRed : AppColors.accentViolet).withValues(alpha: 0.2),
                     borderRadius: AppRadius.borderPill,
                   ),
                   child: Text(
-                    '${(goal.progressPercentage * 100).toStringAsFixed(0)}%',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppColors.accentViolet),
+                    isOverdue ? 'OVERDUE' : '${(goal.progressPercentage * 100).toStringAsFixed(0)}%',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: isOverdue ? AppColors.expenseRed : AppColors.accentViolet,
+                    ),
                   ),
                 ),
               ],
@@ -141,7 +156,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 value: goal.progressPercentage,
                 minHeight: 10,
                 backgroundColor: isDark ? const Color(0x351E293B) : const Color(0x35E2E8F0),
-                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryEmerald),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isOverdue ? AppColors.expenseRed : AppColors.primaryEmerald,
+                ),
               ),
             ),
             const SizedBox(height: AppSpacing.sm),

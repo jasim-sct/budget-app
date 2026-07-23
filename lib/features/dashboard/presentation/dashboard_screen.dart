@@ -7,11 +7,12 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/glass/glass_card.dart';
 import '../../../core/widgets/month_selector_bar.dart';
+import '../../categories/presentation/categories_screen.dart';
+import '../../reports/presentation/reports_screen.dart';
 import '../../transactions/data/transaction_repository.dart';
-import 'widgets/custom_chart_painter.dart';
 
-/// Modern VisionOS Glassmorphic Financial Overview Header.
-/// Powered by Level 10 Deterministic FinancialCalculationEngine.
+/// VisionOS Ultra-Premium Glassmorphic Financial Overview Header.
+/// Features holographic chip styling, quick action glass pill buttons, and real-time Level 10 calculation engine metrics.
 class DashboardHeader extends StatefulWidget {
   final TransactionRepository repository;
 
@@ -46,26 +47,26 @@ class _DashboardHeaderState extends State<DashboardHeader> {
               const MonthSelectorBar(),
               const SizedBox(height: AppSpacing.sm),
 
-              // Welcome Header Row
+              // Welcome Profile Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
                       Container(
-                        width: 44,
-                        height: 44,
+                        width: 46,
+                        height: 46,
                         decoration: BoxDecoration(
-                          gradient: AppColors.primaryGradient,
+                          gradient: AppColors.neonMeshGradient,
                           shape: BoxShape.circle,
-                          boxShadow: AppShadows.glow(AppColors.primaryEmerald),
+                          boxShadow: AppShadows.neonGlow(AppColors.primaryEmerald),
                         ),
                         child: const Center(
                           child: Text(
                             'AM',
                             style: TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w900,
                               color: Colors.white,
                             ),
                           ),
@@ -76,14 +77,14 @@ class _DashboardHeaderState extends State<DashboardHeader> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'WELCOME BACK',
+                            'FINANCIAL OPERATING SYSTEM',
                             style: AppTypography.labelSmall(isDark),
                           ),
                           Text(
                             'Alex Morgan',
                             style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
                               color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
                             ),
                           ),
@@ -94,19 +95,19 @@ class _DashboardHeaderState extends State<DashboardHeader> {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: AppColors.primaryEmerald.withValues(alpha: 0.2),
+                          gradient: AppColors.violetGradient,
                           borderRadius: AppRadius.borderPill,
-                          border: Border.all(color: AppColors.primaryEmerald.withValues(alpha: 0.4), width: 1),
+                          boxShadow: AppShadows.glow(AppColors.accentViolet),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.star_rounded, size: 14, color: AppColors.primaryEmerald),
+                            const Icon(Icons.star_rounded, size: 14, color: Colors.white),
                             const SizedBox(width: 4),
                             Text(
                               'Score: ${metrics.financialScore}',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppColors.primaryEmerald),
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white),
                             ),
                           ],
                         ),
@@ -124,7 +125,7 @@ class _DashboardHeaderState extends State<DashboardHeader> {
               ),
               const SizedBox(height: AppSpacing.lg),
 
-              // Credit Card Style Frosted Glass Balance Card
+              // Credit Card Style Holographic VisionOS Glass Card
               GlassCard(
                 padding: const EdgeInsets.all(AppSpacing.xl),
                 gradient: isDark ? AppColors.cardGradientDark : AppColors.cardGradientLight,
@@ -135,29 +136,29 @@ class _DashboardHeaderState extends State<DashboardHeader> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'TOTAL NET BALANCE',
+                          'TOTAL LIQUID NET WORTH',
                           style: TextStyle(
                             fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.0,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.2,
                             color: Color(0xFF94A3B8),
                           ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
+                            color: Colors.white.withValues(alpha: 0.18),
                             borderRadius: AppRadius.borderPill,
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.35), width: 1),
                           ),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.shield_outlined, size: 12, color: AppColors.primaryEmerald),
+                              Icon(Icons.lock_outline_rounded, size: 12, color: AppColors.primaryEmerald),
                               SizedBox(width: 4),
                               Text(
-                                'Glass Vault',
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white),
+                                'SQLite Vault v3',
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white),
                               ),
                             ],
                           ),
@@ -168,37 +169,37 @@ class _DashboardHeaderState extends State<DashboardHeader> {
                     Text(
                       _hideBalance ? '\$••••••••' : AppFormatters.currency(metrics.netCashFlow),
                       style: const TextStyle(
-                        fontSize: 32,
+                        fontSize: 34,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
+                        letterSpacing: -0.8,
                         color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xl),
 
-                    // Income / Expense / Savings Metrics
+                    // Metrics Trio Row
                     Row(
                       children: [
                         Expanded(
                           child: _buildMetricItem(
-                            label: 'Income',
+                            label: 'Inflow',
                             amount: metrics.totalIncome,
                             color: AppColors.incomeGreen,
                             icon: Icons.arrow_downward_rounded,
                             hidden: _hideBalance,
                           ),
                         ),
-                        Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.15)),
+                        Container(width: 1, height: 34, color: Colors.white.withValues(alpha: 0.18)),
                         Expanded(
                           child: _buildMetricItem(
-                            label: 'Expense',
+                            label: 'Outflow',
                             amount: metrics.totalExpense,
                             color: AppColors.expenseRed,
                             icon: Icons.arrow_upward_rounded,
                             hidden: _hideBalance,
                           ),
                         ),
-                        Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.15)),
+                        Container(width: 1, height: 34, color: Colors.white.withValues(alpha: 0.18)),
                         Expanded(
                           child: _buildMetricItem(
                             label: 'Saved',
@@ -210,48 +211,69 @@ class _DashboardHeaderState extends State<DashboardHeader> {
                         ),
                       ],
                     ),
-
-                    if (metrics.totalExpense > 0) ...[
-                      const SizedBox(height: AppSpacing.lg),
-                      SizedBox(
-                        height: 8,
-                        width: double.infinity,
-                        child: CustomPaint(
-                          painter: CustomChartPainter(
-                            values: [
-                              metrics.totalExpense * 0.45,
-                              metrics.totalExpense * 0.35,
-                              metrics.totalExpense * 0.20,
-                            ],
-                            colors: const [
-                              AppColors.expenseRed,
-                              AppColors.accentAmber,
-                              AppColors.accentSky,
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
 
-              const SizedBox(height: AppSpacing.lg),
-              // Smart Financial Insight Glass Banner
+              const SizedBox(height: AppSpacing.md),
+              // Quick Actions Bar
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildQuickActionButton(
+                    icon: Icons.category_outlined,
+                    label: 'Categories',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const CategoriesScreen()),
+                      );
+                    },
+                    isDark: isDark,
+                  ),
+                  _buildQuickActionButton(
+                    icon: Icons.receipt_long_outlined,
+                    label: 'Statements',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ReportsScreen()),
+                      );
+                    },
+                    isDark: isDark,
+                  ),
+                  _buildQuickActionButton(
+                    icon: Icons.trending_up_rounded,
+                    label: 'Analytics',
+                    onTap: () {},
+                    isDark: isDark,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: AppSpacing.md),
+              // Automated Level 10 Engine Insight Banner
               GlassCard(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 child: Row(
                   children: [
-                    const Icon(Icons.insights_rounded, color: AppColors.primaryEmerald, size: 22),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryEmerald.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.auto_awesome_rounded, color: AppColors.primaryEmerald, size: 20),
+                    ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(
                         metrics.totalExpense > 0
-                            ? 'Engine Insight: Top outflow category is ${metrics.topCategoryName} (${metrics.savingsRate.toStringAsFixed(1)}% savings rate).'
-                            : 'Engine Insight: Zero expenses recorded for this month. Excellent cash retention!',
+                            ? 'Engine Insight: ${metrics.topCategoryName} is top spend (${metrics.savingsRate.toStringAsFixed(1)}% savings rate).'
+                            : 'Engine Insight: Zero outflows logged. Outstanding cash retention!',
                         style: TextStyle(
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
                         ),
                       ),
@@ -263,6 +285,37 @@ class _DashboardHeaderState extends State<DashboardHeader> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildQuickActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+        child: GlassCard(
+          onTap: onTap,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            children: [
+              Icon(icon, color: AppColors.primaryEmerald, size: 20),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -286,7 +339,7 @@ class _DashboardHeaderState extends State<DashboardHeader> {
                 label,
                 style: const TextStyle(
                   fontSize: 11,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: Color(0xFF94A3B8),
                 ),
               ),
@@ -297,7 +350,7 @@ class _DashboardHeaderState extends State<DashboardHeader> {
             hidden ? '\$•••' : AppFormatters.currency(amount),
             style: const TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
               color: Colors.white,
             ),
           ),

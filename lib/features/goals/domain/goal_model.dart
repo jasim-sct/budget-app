@@ -20,8 +20,9 @@ class GoalModel {
     this.isCompleted = false,
   });
 
-  double get progressPercentage => (currentAmount / targetAmount).clamp(0.0, 1.0);
+  double get progressPercentage => targetAmount > 0 ? (currentAmount / targetAmount).clamp(0.0, 1.0) : 0.0;
   double get remainingAmount => (targetAmount - currentAmount).clamp(0.0, double.infinity);
+  bool get isOverdue => !isCompleted && targetDateMilliseconds < DateTime.now().millisecondsSinceEpoch;
 
   Map<String, dynamic> toMap() {
     return {

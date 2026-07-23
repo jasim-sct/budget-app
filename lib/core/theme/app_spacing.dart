@@ -61,4 +61,13 @@ abstract class AppShadows {
           offset: const Offset(0, 6),
         ),
       ];
+
+  static List<BoxShadow> neonGlow(Color color) => [
+        BoxShadow(
+          color: color.withValues(alpha: 0.50),
+          blurRadius: 24,
+          spreadRadius: 0,
+          offset: const Offset(0, 10),
+        ),
+      ];
 }

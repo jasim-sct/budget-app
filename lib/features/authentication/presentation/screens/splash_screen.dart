@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/theme/glass_tokens.dart';
 import '../../../../core/widgets/glass/ambient_background.dart';
 import '../../../../core/widgets/glass/glass_card.dart';
 
@@ -71,7 +70,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     padding: const EdgeInsets.all(AppSpacing.xxl),
                     child: GlassCard(
                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl, vertical: 40),
-                      blur: GlassTokens.blurXl,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.center,

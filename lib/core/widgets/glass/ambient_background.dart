@@ -1,7 +1,8 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../theme/glass_tokens.dart';
 
-/// Animated Dynamic Ambient Background featuring floating blurred color blobs and vignette.
+/// Animated Dynamic Ambient Background featuring floating blurred color blobs and a heavy frosted backdrop.
 class AmbientBackground extends StatefulWidget {
   final Widget child;
 
@@ -27,11 +28,11 @@ class _AmbientBackgroundState extends State<AmbientBackground> with SingleTicker
       duration: const Duration(seconds: 10),
     )..repeat(reverse: true);
 
-    _anim1 = Tween<double>(begin: -30.0, end: 40.0).animate(
+    _anim1 = Tween<double>(begin: -40.0, end: 50.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
     );
 
-    _anim2 = Tween<double>(begin: 40.0, end: -30.0).animate(
+    _anim2 = Tween<double>(begin: 50.0, end: -40.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOutQuad),
     );
   }
@@ -48,12 +49,12 @@ class _AmbientBackgroundState extends State<AmbientBackground> with SingleTicker
 
     return Stack(
       children: [
-        // Base Deep Gradient Background
+        // 1. Base Deep Gradient Background
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: isDark
-                  ? const [Color(0xFF070A12), Color(0xFF0F172A), Color(0xFF090D16)]
+                  ? const [Color(0xFF060913), Color(0xFF0F172A), Color(0xFF0A0E18)]
                   : const [Color(0xFFF1F5F9), Color(0xFFE2E8F0), Color(0xFFF8FAFC)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -61,7 +62,7 @@ class _AmbientBackgroundState extends State<AmbientBackground> with SingleTicker
           ),
         ),
 
-        // Animated Ambient Glowing Blobs
+        // 2. Animated Ambient Glowing Blobs
         AnimatedBuilder(
           animation: _controller,
           builder: (context, _) {
@@ -69,46 +70,46 @@ class _AmbientBackgroundState extends State<AmbientBackground> with SingleTicker
               children: [
                 // Blob 1: Top Left Emerald / Cyan
                 Positioned(
-                  top: -80 + _anim1.value,
-                  left: -60 + _anim2.value,
+                  top: -100 + _anim1.value,
+                  left: -80 + _anim2.value,
+                  child: Container(
+                    width: 360,
+                    height: 360,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isDark
+                          ? GlassTokens.glowEmerald.withValues(alpha: 0.32)
+                          : GlassTokens.glowEmerald.withValues(alpha: 0.22),
+                    ),
+                  ),
+                ),
+                // Blob 2: Bottom Right Violet / Indigo
+                Positioned(
+                  bottom: -120 + _anim2.value,
+                  right: -100 + _anim1.value,
+                  child: Container(
+                    width: 400,
+                    height: 400,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isDark
+                          ? GlassTokens.glowViolet.withValues(alpha: 0.30)
+                          : GlassTokens.glowIndigo.withValues(alpha: 0.20),
+                    ),
+                  ),
+                ),
+                // Blob 3: Center Ambient Cyan / Amber
+                Positioned(
+                  top: MediaQuery.of(context).size.height * 0.30 + _anim2.value,
+                  right: -60 + _anim1.value,
                   child: Container(
                     width: 300,
                     height: 300,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: isDark
-                          ? GlassTokens.glowEmerald.withValues(alpha: 0.18)
-                          : GlassTokens.glowEmerald.withValues(alpha: 0.12),
-                    ),
-                  ),
-                ),
-                // Blob 2: Bottom Right Violet / Indigo
-                Positioned(
-                  bottom: -100 + _anim2.value,
-                  right: -80 + _anim1.value,
-                  child: Container(
-                    width: 340,
-                    height: 340,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isDark
-                          ? GlassTokens.glowViolet.withValues(alpha: 0.16)
-                          : GlassTokens.glowIndigo.withValues(alpha: 0.10),
-                    ),
-                  ),
-                ),
-                // Blob 3: Center Ambient Cyan / Amber
-                Positioned(
-                  top: MediaQuery.of(context).size.height * 0.35 + _anim2.value,
-                  right: -40 + _anim1.value,
-                  child: Container(
-                    width: 240,
-                    height: 240,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isDark
-                          ? GlassTokens.glowCyan.withValues(alpha: 0.12)
-                          : GlassTokens.glowAmber.withValues(alpha: 0.08),
+                          ? GlassTokens.glowCyan.withValues(alpha: 0.25)
+                          : GlassTokens.glowAmber.withValues(alpha: 0.18),
                     ),
                   ),
                 ),
@@ -117,7 +118,17 @@ class _AmbientBackgroundState extends State<AmbientBackground> with SingleTicker
           },
         ),
 
-        // Content
+        // 3. Heavy Background Blur Filter Overlaying the Color Blobs
+        Positioned.fill(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 75.0, sigmaY: 75.0),
+            child: Container(
+              color: Colors.transparent,
+            ),
+          ),
+        ),
+
+        // 4. Main Foreground Content
         widget.child,
       ],
     );

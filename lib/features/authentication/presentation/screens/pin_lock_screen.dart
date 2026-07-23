@@ -206,7 +206,7 @@ class _PinLockScreenState extends State<PinLockScreen> with SingleTickerProvider
       height: 72,
       child: GlassCard(
         padding: EdgeInsets.zero,
-        borderRadius: AppRadius.borderPill,
+        borderRadius: AppRadius.pill,
         onTap: () => _onKeyPress(number),
         child: Center(
           child: Text(

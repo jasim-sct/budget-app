@@ -28,10 +28,10 @@ class BudgetDao {
     for (final map in budgetMaps) {
       final budget = BudgetModel.fromMap(map);
       
-      // SQL aggregate query for category spent total
+      // SQL aggregate query matching category_id, name, and sub_category
       final res = await db.rawQuery(
-        'SELECT SUM(amount) as total FROM ${DbConstants.tableTransactions} WHERE category_id = ? AND type = 0',
-        [budget.categoryId],
+        'SELECT SUM(amount) as total FROM ${DbConstants.tableTransactions} WHERE (category = ? OR category = ? OR sub_category = ?) AND type = 0',
+        [budget.categoryId, budget.name, budget.name],
       );
       
       double spent = 0.0;

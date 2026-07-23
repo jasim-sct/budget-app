@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
 import 'glass_container.dart';
 
-/// GlassCard wrapper with scale tap micro-animations and ambient depth elevation.
+/// VisionOS Ultra-Premium Glass Card Widget with gradient borders and scale animations.
 class GlassCard extends StatefulWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
-  final EdgeInsetsGeometry? margin;
-  final BorderRadius? borderRadius;
-  final Gradient? gradient;
   final VoidCallback? onTap;
-  final double blur;
+  final Gradient? gradient;
+  final Color? borderColor;
+  final double borderRadius;
 
   const GlassCard({
     super.key,
     required this.child,
     this.padding,
-    this.margin,
-    this.borderRadius,
-    this.gradient,
     this.onTap,
-    this.blur = 16.0,
+    this.gradient,
+    this.borderColor,
+    this.borderRadius = 20,
   });
 
   @override
@@ -36,11 +36,9 @@ class _GlassCardState extends State<GlassCard> with SingleTickerProviderStateMix
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 120),
-      lowerBound: 0.0,
-      upperBound: 0.03,
     );
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.97).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
   }
 
@@ -64,24 +62,45 @@ class _GlassCardState extends State<GlassCard> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _scaleAnimation,
-      builder: (context, child) => Transform.scale(
-        scale: _scaleAnimation.value,
-        child: child,
-      ),
-      child: GestureDetector(
-        onTapDown: _onTapDown,
-        onTapUp: _onTapUp,
-        onTapCancel: _onTapCancel,
-        onTap: widget.onTap,
-        child: GlassContainer(
-          padding: widget.padding,
-          margin: widget.margin,
-          borderRadius: widget.borderRadius,
-          gradient: widget.gradient,
-          blur: widget.blur,
-          child: widget.child,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final border = Border.all(
+      color: widget.borderColor ??
+          (isDark ? Colors.white.withValues(alpha: 0.18) : Colors.black.withValues(alpha: 0.08)),
+      width: 1.2,
+    );
+
+    return GestureDetector(
+      onTapDown: _onTapDown,
+      onTapUp: _onTapUp,
+      onTapCancel: _onTapCancel,
+      onTap: widget.onTap,
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: child,
+          );
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(widget.borderRadius),
+            border: border,
+            boxShadow: [
+              BoxShadow(
+                color: isDark ? Colors.black.withValues(alpha: 0.35) : AppColors.primaryEmerald.withValues(alpha: 0.06),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: GlassContainer(
+            borderRadius: BorderRadius.circular(widget.borderRadius),
+            padding: widget.padding ?? const EdgeInsets.all(AppSpacing.lg),
+            gradient: widget.gradient,
+            child: widget.child,
+          ),
         ),
       ),
     );

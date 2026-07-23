@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
+import '../services/filter_query_builder.dart';
+import '../services/global_filter_state.dart';
 
 /// Commercial-grade SQLite Database Engine (Version 3).
 /// Single source of truth master ledger supporting sub-categories, multi-currency exchange rates,
-/// envelope budget carry-forwards, goal risk metrics, and offline forecasts.
+/// envelope budget carry-forwards, goal risk metrics, and enterprise global filtering.
 class DatabaseHelper {
   static DatabaseHelper? _instance;
   static Database? _database;
@@ -319,7 +321,7 @@ class DatabaseHelper {
     await batch.commit(noResult: true);
   }
 
-  // --- MASTER LEDGER CRUD & AGGREGATIONS ---
+  // --- MASTER LEDGER CRUD & ENTERPRISE FILTERED AGGREGATIONS ---
 
   Future<int> insertTransaction(Map<String, dynamic> row) async {
     final db = await database;
@@ -338,6 +340,76 @@ class DatabaseHelper {
     );
   }
 
+  Future<List<Map<String, dynamic>>> getFilteredTransactions(
+    GlobalFilterState filter, {
+    required int limit,
+    required int offset,
+    int? activeYear,
+    int? activeMonth,
+  }) async {
+    final db = await database;
+    final query = FilterQueryBuilder.buildQuery(filter, activeYear: activeYear, activeMonth: activeMonth);
+
+    return await db.query(
+      'transactions',
+      where: query.whereClause,
+      whereArgs: query.whereArgs,
+      orderBy: query.orderBy,
+      limit: limit,
+      offset: offset,
+    );
+  }
+
+  Future<Map<String, double>> getFilteredSummaryTotals(
+    GlobalFilterState filter, {
+    int? activeYear,
+    int? activeMonth,
+  }) async {
+    final db = await database;
+    final query = FilterQueryBuilder.buildQuery(filter, activeYear: activeYear, activeMonth: activeMonth);
+
+    final result = await db.rawQuery('''
+      SELECT 
+        SUM(CASE WHEN type = 1 THEN amount ELSE 0 END) AS total_income,
+        SUM(CASE WHEN type = 0 THEN amount ELSE 0 END) AS total_expense,
+        AVG(CASE WHEN type = 0 THEN amount ELSE NULL END) AS avg_tx,
+        MAX(CASE WHEN type = 0 THEN amount ELSE 0 END) AS max_tx,
+        COUNT(*) AS tx_count
+      FROM transactions
+      WHERE ${query.whereClause}
+    ''', query.whereArgs);
+
+    if (result.isNotEmpty) {
+      final row = result.first;
+      final income = (row['total_income'] as num?)?.toDouble() ?? 0.0;
+      final expense = (row['total_expense'] as num?)?.toDouble() ?? 0.0;
+      final avg = (row['avg_tx'] as num?)?.toDouble() ?? 0.0;
+      final max = (row['max_tx'] as num?)?.toDouble() ?? 0.0;
+      final count = (row['tx_count'] as num?)?.toDouble() ?? 0.0;
+      return {
+        'income': income,
+        'expense': expense,
+        'avg': avg,
+        'max': max,
+        'count': count,
+      };
+    }
+    return {'income': 0.0, 'expense': 0.0, 'avg': 0.0, 'max': 0.0, 'count': 0.0};
+  }
+
+  Future<List<Map<String, dynamic>>> getTransactionsPaginated({
+    required int limit,
+    required int offset,
+  }) async {
+    final db = await database;
+    return await db.query(
+      'transactions',
+      orderBy: 'date DESC',
+      limit: limit,
+      offset: offset,
+    );
+  }
+
   Future<List<Map<String, dynamic>>> getTransactionsByMonth({
     required int year,
     required int month,
@@ -349,19 +421,6 @@ class DatabaseHelper {
       'transactions',
       where: 'year = ? AND month = ?',
       whereArgs: [year, month],
-      orderBy: 'date DESC',
-      limit: limit,
-      offset: offset,
-    );
-  }
-
-  Future<List<Map<String, dynamic>>> getTransactionsPaginated({
-    required int limit,
-    required int offset,
-  }) async {
-    final db = await database;
-    return await db.query(
-      'transactions',
       orderBy: 'date DESC',
       limit: limit,
       offset: offset,
@@ -502,7 +561,8 @@ class DatabaseHelper {
 
   Future<int> deleteCategory(String id) async {
     final db = await database;
-    return await db.delete('categories', where: 'id = ?', whereArgs: [id]);
+    // Delete parent category AND any child sub-categories with parent_id == id
+    return await db.delete('categories', where: 'id = ? OR parent_id = ?', whereArgs: [id, id]);
   }
 
   // --- ACCOUNTS CRUD ---

@@ -1,11 +1,12 @@
 import '../../../core/database/database_helper.dart';
 import '../../../core/services/financial_sync_service.dart';
+import '../../../core/services/global_filter_controller.dart';
 import '../../../core/state/micro_notifier.dart';
 import '../../../core/state/month_selector_controller.dart';
 import 'financial_metrics.dart';
 
 /// Level 10 Enterprise Financial Calculation Engine.
-/// Single source of truth calculation engine. Derives all financial metrics deterministically from SQLite master ledger.
+/// Single source of truth calculation engine. Derives all financial metrics deterministically from SQLite master ledger under Global Filter Context.
 class FinancialCalculationEngine {
   static FinancialCalculationEngine? _instance;
   final DatabaseHelper _db = DatabaseHelper.instance;
@@ -17,6 +18,7 @@ class FinancialCalculationEngine {
   FinancialCalculationEngine._internal() {
     MonthSelectorController.instance.addListener(recalculate);
     FinancialSyncService.instance.addListener(recalculate);
+    GlobalFilterController.instance.filterNotifier.addListener(recalculate);
     recalculate();
   }
 
@@ -25,14 +27,19 @@ class FinancialCalculationEngine {
     return _instance!;
   }
 
-  /// Single-pass deterministic financial pipeline execution.
+  /// Single-pass deterministic financial pipeline execution under active Global Filter Context.
   Future<void> recalculate() async {
     final date = MonthSelectorController.instance.value;
     final year = date.year;
     final month = date.month;
+    final filter = GlobalFilterController.instance.state;
 
-    // 1. Transaction & Cash Flow Totals
-    final totals = await _db.getSummaryTotalsByMonth(year, month);
+    // 1. Transaction & Cash Flow Totals (Filtered)
+    final totals = await _db.getFilteredSummaryTotals(
+      filter,
+      activeYear: year,
+      activeMonth: month,
+    );
     final income = totals['income'] ?? 0.0;
     final expense = totals['expense'] ?? 0.0;
     final netCashFlow = income - expense;
@@ -66,7 +73,7 @@ class FinancialCalculationEngine {
 
     // 5. Savings Engine & Burn Rate
     final savingsRate = income > 0 ? ((income - expense) / income * 100).clamp(0.0, 100.0) : 0.0;
-    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final daysInMonth = DateTime(year, month + 1, 0).day.clamp(1, 31);
     final dailyBurnRate = expense / daysInMonth;
     final emergencyFundMonths = dailyBurnRate > 0 ? (assets / (dailyBurnRate * 30)) : 0.0;
 

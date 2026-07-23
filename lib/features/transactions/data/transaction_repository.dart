@@ -1,5 +1,6 @@
 import '../../../core/database/database_helper.dart';
 import '../../../core/services/financial_sync_service.dart';
+import '../../../core/services/global_filter_controller.dart';
 import '../../../core/state/micro_notifier.dart';
 import '../../../core/state/month_selector_controller.dart';
 import '../domain/transaction_model.dart';
@@ -38,7 +39,7 @@ class TransactionState {
   }
 }
 
-/// Feature repository managing data pagination, month-based filtering, and micro-state.
+/// Feature repository managing data pagination, enterprise global filtering, and micro-state.
 class TransactionRepository {
   static const int pageSize = 50;
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
@@ -59,9 +60,10 @@ class TransactionRepository {
   TransactionRepository() {
     MonthSelectorController.instance.addListener(loadInitialData);
     FinancialSyncService.instance.addListener(loadInitialData);
+    GlobalFilterController.instance.filterNotifier.addListener(loadInitialData);
   }
 
-  /// Loads month-filtered transactions and summary totals based on global MonthSelectorController.
+  /// Loads filtered transactions and summary totals based on GlobalFilterController and active Month.
   Future<void> loadInitialData() async {
     if (_isFetching) return;
     _isFetching = true;
@@ -70,14 +72,21 @@ class TransactionRepository {
     stateNotifier.update(stateNotifier.value.copyWith(isLoading: true));
 
     final date = MonthSelectorController.instance.value;
-    final rawTxList = await _dbHelper.getTransactionsByMonth(
-      year: date.year,
-      month: date.month,
+    final filter = GlobalFilterController.instance.state;
+
+    final rawTxList = await _dbHelper.getFilteredTransactions(
+      filter,
       limit: pageSize,
       offset: 0,
+      activeYear: date.year,
+      activeMonth: date.month,
     );
 
-    final totals = await _dbHelper.getSummaryTotalsByMonth(date.year, date.month);
+    final totals = await _dbHelper.getFilteredSummaryTotals(
+      filter,
+      activeYear: date.year,
+      activeMonth: date.month,
+    );
 
     final txModels = rawTxList.map((map) => TransactionModel.fromMap(map)).toList();
 
@@ -96,17 +105,20 @@ class TransactionRepository {
     _isFetching = false;
   }
 
-  /// Appends next page of transactions on scroll
+  /// Appends next page of filtered transactions on scroll
   Future<void> loadMore() async {
     if (_isFetching || !stateNotifier.value.hasMore) return;
     _isFetching = true;
 
     final date = MonthSelectorController.instance.value;
-    final rawTxList = await _dbHelper.getTransactionsByMonth(
-      year: date.year,
-      month: date.month,
+    final filter = GlobalFilterController.instance.state;
+
+    final rawTxList = await _dbHelper.getFilteredTransactions(
+      filter,
       limit: pageSize,
       offset: _currentOffset,
+      activeYear: date.year,
+      activeMonth: date.month,
     );
 
     final newTxModels = rawTxList.map((map) => TransactionModel.fromMap(map)).toList();
