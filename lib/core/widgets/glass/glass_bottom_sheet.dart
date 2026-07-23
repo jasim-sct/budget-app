@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 
-/// Professional bottom sheet wrapper with consistent styling.
+/// Professional bottom sheet wrapper with max height constraint and smooth inner scrolling support.
 class GlassBottomSheet extends StatelessWidget {
   final Widget child;
 
@@ -16,6 +16,9 @@ class GlassBottomSheet extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.88,
+      ),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
@@ -46,7 +49,9 @@ class GlassBottomSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          child,
+          Flexible(
+            child: child,
+          ),
         ],
       ),
     );

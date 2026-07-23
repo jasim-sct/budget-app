@@ -52,7 +52,40 @@ class _TransactionDetailModalState extends State<TransactionDetailModal> {
   }
 
   Future<void> _deleteTransaction() async {
-    if (widget.transaction.id != null) {
+    if (widget.transaction.id == null) return;
+
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return AlertDialog(
+          backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderMd),
+          title: Text('Delete Ledger Entry?', style: AppTypography.titleLarge(isDark)),
+          content: Text(
+            'Are you sure you want to delete "${widget.transaction.title}" (${AppFormatters.currency(widget.transaction.amount)})? This action cannot be undone.',
+            style: AppTypography.bodyMedium(isDark),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text('Cancel', style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.expenseRed,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.borderSm),
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true && widget.transaction.id != null) {
       await DatabaseHelper.instance.deleteTransaction(widget.transaction.id!);
       FinancialSyncService.instance.notifyMutation();
       await FinancialCalculationEngine.instance.recalculate();
@@ -76,6 +109,7 @@ class _TransactionDetailModalState extends State<TransactionDetailModal> {
 
     return GlassBottomSheet(
       child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

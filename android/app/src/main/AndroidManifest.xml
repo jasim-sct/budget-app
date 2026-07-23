@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Zero unnecessary background permissions to preserve battery & CPU on dual-core hardware -->
     <application
-        android:label="Budget Lite"
+        android:label="MJSM"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"

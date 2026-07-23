@@ -78,6 +78,7 @@ class _AccountDetailModalState extends State<AccountDetailModal> {
 
     return GlassBottomSheet(
       child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -105,50 +105,53 @@ class SettingsScreen extends StatelessWidget {
                           backgroundColor: isSelected
                               ? AppColors.primaryBlue.withValues(alpha: 0.12)
                               : null,
-                          onTap: () {
-                            CurrencyProvider.instance.selectCurrency(opt);
-                            Navigator.pop(modalContext);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Currency updated to ${opt.name} (${opt.symbol.trim()})'),
-                                backgroundColor: AppColors.primaryBlue,
-                              ),
-                            );
-                          },
-                          child: ListTile(
-                            leading: Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? AppColors.primaryBlue
-                                    : (isDark ? AppColors.darkSurfaceLight : AppColors.lightSurfaceSecondary),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  opt.symbol.trim(),
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                    color: isSelected ? Colors.white : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: ListTile(
+                              onTap: () {
+                                CurrencyProvider.instance.selectCurrency(opt);
+                                Navigator.pop(modalContext);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Currency updated to ${opt.name} (${opt.symbol.trim()})'),
+                                    backgroundColor: AppColors.primaryBlue,
+                                  ),
+                                );
+                              },
+                              leading: Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? AppColors.primaryBlue
+                                      : (isDark ? AppColors.darkSurfaceLight : AppColors.lightSurfaceSecondary),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    opt.symbol.trim(),
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: isSelected ? Colors.white : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            title: Text(
-                              '${opt.name} (${opt.symbol.trim()})',
-                              style: AppTypography.titleMedium(isDark).copyWith(
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              title: Text(
+                                '${opt.name} (${opt.symbol.trim()})',
+                                style: AppTypography.titleMedium(isDark).copyWith(
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                ),
                               ),
+                              subtitle: Text(
+                                '${opt.country} • ${opt.code}',
+                                style: AppTypography.caption(isDark),
+                              ),
+                              trailing: isSelected
+                                  ? const Icon(Icons.check_circle_rounded, color: AppColors.primaryBlue, size: 20)
+                                  : null,
                             ),
-                            subtitle: Text(
-                              '${opt.country} • ${opt.code}',
-                              style: AppTypography.caption(isDark),
-                            ),
-                            trailing: isSelected
-                                ? const Icon(Icons.check_circle_rounded, color: AppColors.primaryBlue, size: 20)
-                                : null,
                           ),
                         ),
                       );
@@ -275,7 +278,7 @@ class SettingsScreen extends StatelessWidget {
                           borderRadius: AppRadius.borderXs,
                         ),
                         child: const Text(
-                          'ENTERPRISE EDITION',
+                          'MJASIMMC EDITION',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -452,22 +455,25 @@ class SettingsScreen extends StatelessWidget {
   }) {
     return AppCard(
       padding: EdgeInsets.zero,
-      child: ListTile(
-        leading: Icon(icon, color: iconColor ?? AppColors.primaryBlue, size: 20),
-        title: Text(
-          title,
-          style: AppTypography.titleMedium(isDark),
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          leading: Icon(icon, color: iconColor ?? AppColors.primaryBlue, size: 20),
+          title: Text(
+            title,
+            style: AppTypography.titleMedium(isDark),
+          ),
+          subtitle: Text(
+            subtitle,
+            style: AppTypography.caption(isDark),
+          ),
+          trailing: Icon(
+            Icons.chevron_right_rounded,
+            size: 18,
+            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+          ),
+          onTap: onTap,
         ),
-        subtitle: Text(
-          subtitle,
-          style: AppTypography.caption(isDark),
-        ),
-        trailing: Icon(
-          Icons.chevron_right_rounded,
-          size: 18,
-          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-        ),
-        onTap: onTap,
       ),
     );
   }

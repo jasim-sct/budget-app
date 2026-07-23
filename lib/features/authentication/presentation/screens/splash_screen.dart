@@ -77,12 +77,12 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               ),
               const SizedBox(height: AppSpacing.md),
               Text(
-                'BUDGET LITE PRO',
+                'MJSM',
                 style: AppTypography.displayMedium(isDark).copyWith(fontSize: 20, letterSpacing: 1.2),
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                'ENTERPRISE FINANCIAL MANAGEMENT',
+                'MJASIMMC FINANCIAL MANAGEMENT',
                 style: AppTypography.sectionLabel(isDark).copyWith(letterSpacing: 1.2),
               ),
             ],

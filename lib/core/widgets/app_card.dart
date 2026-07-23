@@ -49,7 +49,11 @@ class AppCard extends StatelessWidget {
         border: defaultBorder,
         boxShadow: boxShadow ?? (isDark ? AppShadows.none : AppShadows.sm),
       ),
-      child: child,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: defaultRadius,
+        child: child,
+      ),
     );
 
     if (onTap != null || onLongPress != null) {

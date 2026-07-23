@@ -841,7 +841,7 @@ class DatabaseHelper {
 
   Future<Set<String>> getUsedCategoryNames() async {
     final db = await database;
-    final result = await db.rawQuery('SELECT DISTINCT category FROM transactions WHERE category IS NOT NULL AND category != ""');
+    final result = await db.rawQuery("SELECT DISTINCT category FROM transactions WHERE category IS NOT NULL AND category != ''");
     return result.map((r) => (r['category'] as String).trim().toLowerCase()).toSet();
   }
 

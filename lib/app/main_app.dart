@@ -58,7 +58,7 @@ class _CommercialBudgetAppState extends State<CommercialBudgetApp> {
           valueListenable: CurrencyProvider.instance,
           builder: (context, currency, _) {
             return MaterialApp(
-              title: 'Budget Lite Pro',
+              title: 'MJSM',
               debugShowCheckedModeBanner: false,
               theme: AppTheme.lightTheme,
               darkTheme: AppTheme.darkTheme,

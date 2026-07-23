@@ -30,7 +30,46 @@ class TransactionItemTile extends StatelessWidget {
     return Dismissible(
       key: ValueKey('tx_${transaction.id ?? ''}_${transaction.dateMilliseconds}_${transaction.title}'),
       direction: onDelete != null ? DismissDirection.endToStart : DismissDirection.none,
-      onDismissed: onDelete != null ? (_) => onDelete!() : null,
+      confirmDismiss: onDelete != null
+          ? (direction) async {
+              final bool? confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) {
+                  final isDark = Theme.of(ctx).brightness == Brightness.dark;
+                  return AlertDialog(
+                    backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                    shape: RoundedRectangleBorder(borderRadius: AppRadius.borderMd),
+                    title: Text('Delete Ledger Entry?', style: AppTypography.titleLarge(isDark)),
+                    content: Text(
+                      'Are you sure you want to delete "${transaction.title}" (${AppFormatters.currency(transaction.amount)})? This action cannot be undone.',
+                      style: AppTypography.bodyMedium(isDark),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: Text('Cancel', style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.expenseRed,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderSm),
+                        ),
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  );
+                },
+              );
+              if (confirmed == true) {
+                onDelete!();
+                return true;
+              }
+              return false;
+            }
+          : null,
+      onDismissed: (_) {},
       background: Container(
         margin: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
         decoration: BoxDecoration(

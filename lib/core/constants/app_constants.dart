@@ -1,5 +1,5 @@
 abstract class AppConstants {
-  static const String appName = 'Budget Lite';
+  static const String appName = 'MJSM';
   static const String appVersion = '1.0.0';
   static const String defaultCurrency = 'USD';
   
