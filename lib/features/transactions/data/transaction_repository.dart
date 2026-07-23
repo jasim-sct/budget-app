@@ -1,4 +1,6 @@
+import '../../../core/database/app_database.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/services/financial_calculation_engine.dart';
 import '../../../core/services/financial_sync_service.dart';
 import '../../../core/services/global_filter_controller.dart';
 import '../../../core/state/micro_notifier.dart';
@@ -65,7 +67,6 @@ class TransactionRepository {
 
   /// Loads filtered transactions and summary totals based on GlobalFilterController and active Month.
   Future<void> loadInitialData() async {
-    if (_isFetching) return;
     _isFetching = true;
     _currentOffset = 0;
 
@@ -152,10 +153,12 @@ class TransactionRepository {
     FinancialSyncService.instance.notifyMutation();
   }
 
-  /// Clear all
+  /// Clear all stored application data across all database tables
   Future<void> clearAll() async {
     await _dbHelper.clearAllData();
+    await AppDatabase.instance.clearAllData();
     await loadInitialData();
     FinancialSyncService.instance.notifyMutation();
+    await FinancialCalculationEngine.instance.recalculate();
   }
 }

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
-import '../../../../core/widgets/glass/glass_container.dart';
 import '../../domain/transaction_model.dart';
 
-/// VisionOS Frosted Glass Transaction Tile with swipe dismissible actions and glowing category badge.
+/// Professional transaction list tile with swipe-to-delete.
 class TransactionItemTile extends StatelessWidget {
   final TransactionModel transaction;
   final VoidCallback onDelete;
@@ -26,50 +26,52 @@ class TransactionItemTile extends StatelessWidget {
     final IconData categoryIcon = _getCategoryIcon(transaction.category, isIncome);
 
     return Dismissible(
-      key: ValueKey(transaction.id ?? transaction.dateMilliseconds),
+      key: ValueKey('tx_${transaction.id ?? ''}_${transaction.dateMilliseconds}_${transaction.title}'),
       direction: DismissDirection.endToStart,
       onDismissed: (_) => onDelete(),
       background: Container(
-        margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 4),
+        margin: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
         decoration: BoxDecoration(
-          color: AppColors.expenseRed.withValues(alpha: 0.85),
-          borderRadius: AppRadius.borderMd,
+          color: AppColors.expenseRed,
+          borderRadius: AppRadius.borderSm,
         ),
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: AppSpacing.lg),
-        child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 24),
+        padding: const EdgeInsets.only(right: AppSpacing.md),
+        child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 20),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 4),
-        child: GlassContainer(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkCardBg : AppColors.lightCardBg,
+            borderRadius: AppRadius.borderSm,
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              width: 1.0,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
           child: Row(
             children: [
-              // Glowing Category Icon Badge
+              // Icon Badge
               Container(
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: isIncome
-                      ? AppColors.incomeGreen.withValues(alpha: 0.18)
-                      : AppColors.accentIndigo.withValues(alpha: 0.18),
+                      ? AppColors.incomeGreen.withValues(alpha: 0.12)
+                      : (isDark ? AppColors.darkSurfaceLight : AppColors.lightSurfaceSecondary),
                   borderRadius: AppRadius.borderSm,
-                  border: Border.all(
-                    color: isIncome
-                        ? AppColors.incomeGreen.withValues(alpha: 0.4)
-                        : AppColors.accentIndigo.withValues(alpha: 0.4),
-                    width: 1,
-                  ),
                 ),
                 child: Icon(
                   categoryIcon,
-                  color: isIncome ? AppColors.incomeGreen : AppColors.accentIndigo,
-                  size: 22,
+                  color: isIncome ? AppColors.incomeGreen : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: AppSpacing.sm),
 
-              // Title & Category details
+              // Title & Category
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,39 +81,36 @@ class TransactionItemTile extends StatelessWidget {
                       transaction.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                      ),
+                      style: AppTypography.titleMedium(isDark),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xxs),
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? AppColors.darkSurfaceLight.withValues(alpha: 0.5)
-                                : AppColors.lightSurfaceSecondary.withValues(alpha: 0.5),
-                            borderRadius: AppRadius.borderXs,
+                        Text(
+                          transaction.category,
+                          style: AppTypography.labelSmall(isDark),
+                        ),
+                        if (transaction.accountName != null && transaction.accountName!.isNotEmpty) ...[
+                          Text(
+                            ' • ',
+                            style: AppTypography.labelSmall(isDark),
                           ),
-                          child: Text(
-                            transaction.category,
+                          Text(
+                            transaction.accountName!,
                             style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.primaryBlue,
                             ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ],
                 ),
               ),
 
-              // Amount Display
+              // Amount & Date
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -119,17 +118,15 @@ class TransactionItemTile extends StatelessWidget {
                   Text(
                     '$sign${AppFormatters.currency(transaction.amount)}',
                     style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
                       color: amountColor,
                     ),
                   ),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text(
                     AppFormatters.dateShortFromMs(transaction.dateMilliseconds),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                    ),
+                    style: AppTypography.labelSmall(isDark),
                   ),
                 ],
               ),

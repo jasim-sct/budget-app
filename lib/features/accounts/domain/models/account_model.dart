@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-enum AccountType { cash, bank, savings, creditCard, loan, investment }
+enum AccountType { cash, bank, savings, creditCard, investment }
 
 @immutable
 class AccountModel {

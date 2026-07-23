@@ -1,11 +1,21 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
-import '../../theme/glass_tokens.dart';
-import '../floating_bottom_nav.dart';
 
-/// VisionOS-inspired Floating Glass Dock Navigation Bar.
+/// Navigation item data class.
+class NavItem {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+
+  const NavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+  });
+}
+
+/// Professional bottom navigation bar with solid background and clean styling.
 class GlassBottomBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -23,81 +33,51 @@ class GlassBottomBar extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
-      height: 66,
-      child: ClipRRect(
-        borderRadius: AppRadius.borderPill,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: GlassTokens.blurLg, sigmaY: GlassTokens.blurLg),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isDark
-                  ? GlassTokens.darkGlassSurface.withValues(alpha: 0.85)
-                  : GlassTokens.lightGlassSurface.withValues(alpha: 0.85),
-              borderRadius: AppRadius.borderPill,
-              border: Border.all(
-                color: isDark ? GlassTokens.borderHighlightDark : GlassTokens.borderHighlightLight,
-                width: 1.2,
-              ),
-              boxShadow: AppShadows.floating,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(items.length, (index) {
-                final isSelected = index == currentIndex;
-                final item = items[index];
-
-                return GestureDetector(
-                  onTap: () => onTap(index),
-                  behavior: HitTestBehavior.opaque,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.fastOutSlowIn,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: isSelected
-                        ? BoxDecoration(
-                            color: AppColors.primaryEmerald.withValues(alpha: isDark ? 0.25 : 0.15),
-                            borderRadius: AppRadius.borderPill,
-                            border: Border.all(
-                              color: AppColors.primaryEmerald.withValues(alpha: 0.4),
-                              width: 1,
-                            ),
-                            boxShadow: AppShadows.glow(AppColors.primaryEmerald),
-                          )
-                        : const BoxDecoration(),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AnimatedScale(
-                          duration: const Duration(milliseconds: 200),
-                          scale: isSelected ? 1.15 : 1.0,
-                          child: Icon(
-                            isSelected ? item.activeIcon : item.icon,
-                            size: 22,
-                            color: isSelected
-                                ? AppColors.primaryEmerald
-                                : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-                          ),
-                        ),
-                        if (isSelected) ...[
-                          const SizedBox(width: 8),
-                          Text(
-                            item.label,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primaryEmerald,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                );
-              }),
-            ),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        border: Border(
+          top: BorderSide(
+            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+            width: 1.0,
           ),
         ),
+      ),
+      height: 56,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: List.generate(items.length, (index) {
+          final isSelected = index == currentIndex;
+          final item = items[index];
+          final activeColor = AppColors.primaryBlue;
+          final inactiveColor = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+
+          return InkWell(
+            onTap: () => onTap(index),
+            child: Container(
+              height: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 6),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isSelected ? item.activeIcon : item.icon,
+                    size: 20,
+                    color: isSelected ? activeColor : inactiveColor,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    item.label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                      color: isSelected ? activeColor : inactiveColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
       ),
     );
   }

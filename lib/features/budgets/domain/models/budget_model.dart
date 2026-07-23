@@ -25,6 +25,7 @@ class BudgetModel {
       'id': id,
       'name': name,
       'category_id': categoryId,
+      'category_name': name,
       'amount_limit': amountLimit,
       'period_type': periodType,
       'alert_threshold': alertThreshold,
@@ -35,12 +36,12 @@ class BudgetModel {
   factory BudgetModel.fromMap(Map<String, dynamic> map) {
     return BudgetModel(
       id: map['id'] as String,
-      name: map['name'] as String,
-      categoryId: map['category_id'] as String,
-      amountLimit: (map['amount_limit'] as num).toDouble(),
-      periodType: map['period_type'] as String,
-      alertThreshold: (map['alert_threshold'] as num).toDouble(),
-      isActive: (map['is_active'] as int) == 1,
+      name: (map['name'] ?? map['category_name'] ?? 'Spending Limit') as String,
+      categoryId: (map['category_id'] ?? 'cat_general') as String,
+      amountLimit: ((map['amount_limit'] ?? 0.0) as num).toDouble(),
+      periodType: (map['period_type'] ?? 'monthly') as String,
+      alertThreshold: ((map['alert_threshold'] ?? 0.8) as num).toDouble(),
+      isActive: (map['is_active'] as int? ?? 1) == 1,
     );
   }
 }

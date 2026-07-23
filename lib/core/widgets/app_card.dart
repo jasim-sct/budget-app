@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 
-/// Reusable card component supporting ambient depth, gradients, borders, and touch press animations.
+/// Reusable card component with consistent padding, radius, border, and elevation.
 class AppCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -41,13 +41,13 @@ class AppCard extends StatelessWidget {
 
     Widget container = Container(
       margin: margin,
-      padding: padding ?? const EdgeInsets.all(AppSpacing.lg),
+      padding: padding ?? const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: gradient == null ? defaultBg : null,
         gradient: gradient,
         borderRadius: defaultRadius,
         border: defaultBorder,
-        boxShadow: boxShadow ?? (isDark ? null : AppShadows.card),
+        boxShadow: boxShadow ?? (isDark ? AppShadows.none : AppShadows.sm),
       ),
       child: child,
     );

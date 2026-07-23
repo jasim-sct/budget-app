@@ -1,4 +1,4 @@
-import '../../../features/categories/domain/category_model.dart';
+import '../../../features/transactions/domain/transaction_model.dart';
 
 enum TimeRangePreset {
   allTime,
@@ -27,7 +27,7 @@ class GlobalFilterState {
   final TimeRangePreset timeRangePreset;
   final DateTime? startDate;
   final DateTime? endDate;
-  final Set<CategoryType> transactionTypes;
+  final Set<TransactionType> transactionTypes;
   final Set<String> categoryIds;
   final Set<String> accountIds;
   final double? minAmount;
@@ -77,7 +77,7 @@ class GlobalFilterState {
     TimeRangePreset? timeRangePreset,
     DateTime? startDate,
     DateTime? endDate,
-    Set<CategoryType>? transactionTypes,
+    Set<TransactionType>? transactionTypes,
     Set<String>? categoryIds,
     Set<String>? accountIds,
     double? minAmount,

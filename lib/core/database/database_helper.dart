@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 import '../services/filter_query_builder.dart';
+import '../services/financial_sync_service.dart';
 import '../services/global_filter_state.dart';
 
 /// Commercial-grade SQLite Database Engine (Version 3).
@@ -37,6 +38,38 @@ class DatabaseHelper {
         await db.execute('PRAGMA journal_mode = WAL;');
         await db.execute('PRAGMA synchronous = NORMAL;');
         await db.execute('PRAGMA foreign_keys = ON;');
+      },
+      onOpen: (db) async {
+        try {
+          await db.execute('ALTER TABLE accounts ADD COLUMN updated_at INTEGER DEFAULT 0;');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE accounts ADD COLUMN interest_rate REAL DEFAULT 0.0;');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE accounts ADD COLUMN interest_type TEXT DEFAULT "flat";');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE accounts ADD COLUMN interest_frequency TEXT DEFAULT "Monthly";');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE accounts ADD COLUMN loan_tenure_months INTEGER DEFAULT 12;');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE accounts ADD COLUMN initial_principal REAL DEFAULT 0.0;');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE budgets ADD COLUMN name TEXT;');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE budgets ADD COLUMN alert_threshold REAL DEFAULT 0.8;');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE budgets ADD COLUMN is_active INTEGER DEFAULT 1;');
+        } catch (_) {}
+        try {
+          await db.execute('CREATE TABLE IF NOT EXISTS user_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);');
+        } catch (_) {}
       },
     );
   }
@@ -100,7 +133,13 @@ class DatabaseHelper {
         credit_limit REAL NOT NULL DEFAULT 0.0,
         currency TEXT NOT NULL DEFAULT 'USD',
         color_value INTEGER NOT NULL,
-        is_active INTEGER NOT NULL DEFAULT 1
+        is_active INTEGER NOT NULL DEFAULT 1,
+        updated_at INTEGER DEFAULT 0,
+        interest_rate REAL DEFAULT 0.0,
+        interest_type TEXT DEFAULT 'flat',
+        interest_frequency TEXT DEFAULT 'Monthly',
+        loan_tenure_months INTEGER DEFAULT 12,
+        initial_principal REAL DEFAULT 0.0
       )
     ''');
 
@@ -108,12 +147,15 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE budgets (
         id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
         category_id TEXT NOT NULL,
         category_name TEXT NOT NULL,
         amount_limit REAL NOT NULL,
         envelope_allocated REAL DEFAULT 0.0,
         carry_forward INTEGER DEFAULT 0,
         period_type TEXT NOT NULL DEFAULT 'Monthly',
+        alert_threshold REAL DEFAULT 0.8,
+        is_active INTEGER DEFAULT 1,
         month INTEGER,
         year INTEGER
       )
@@ -143,6 +185,14 @@ class DatabaseHelper {
   }
 
   FutureOr<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    try {
+      await db.execute('ALTER TABLE accounts ADD COLUMN interest_rate REAL DEFAULT 0.0');
+      await db.execute('ALTER TABLE accounts ADD COLUMN interest_type TEXT DEFAULT "flat"');
+      await db.execute('ALTER TABLE accounts ADD COLUMN interest_frequency TEXT DEFAULT "Monthly"');
+      await db.execute('ALTER TABLE accounts ADD COLUMN loan_tenure_months INTEGER DEFAULT 12');
+      await db.execute('ALTER TABLE accounts ADD COLUMN initial_principal REAL DEFAULT 0.0');
+    } catch (_) {}
+
     if (oldVersion < 3) {
       try {
         await db.execute('ALTER TABLE transactions ADD COLUMN merchant TEXT');
@@ -168,53 +218,116 @@ class DatabaseHelper {
   Future<void> _seedEnterpriseDefaults(Database db) async {
     final batch = db.batch();
 
-    // Default Accounts
+    // Default Accounts with Initial Balances & Ledger Entries
+    final nowTime = DateTime.now().millisecondsSinceEpoch;
+
     batch.insert('accounts', {
       'id': 'acc_cash',
       'name': 'Cash Wallet',
       'type': 'Cash',
-      'balance': 450.0,
-      'opening_balance': 450.0,
+      'balance': 350.0,
+      'opening_balance': 350.0,
       'credit_limit': 0.0,
       'currency': 'USD',
       'color_value': 0xFF10B981,
       'is_active': 1,
+      'updated_at': nowTime,
+      'initial_principal': 350.0,
     });
 
     batch.insert('accounts', {
       'id': 'acc_checking',
       'name': 'Main Checking',
       'type': 'Checking',
-      'balance': 3450.0,
-      'opening_balance': 3450.0,
+      'balance': 2500.0,
+      'opening_balance': 2500.0,
       'credit_limit': 0.0,
       'currency': 'USD',
       'color_value': 0xFF2563EB,
       'is_active': 1,
+      'updated_at': nowTime,
+      'initial_principal': 2500.0,
     });
 
     batch.insert('accounts', {
       'id': 'acc_credit',
       'name': 'Sapphire Credit Card',
       'type': 'Credit Card',
-      'balance': -620.0,
+      'balance': 0.0,
       'opening_balance': 0.0,
       'credit_limit': 5000.0,
       'currency': 'USD',
       'color_value': 0xFFEC4899,
       'is_active': 1,
+      'updated_at': nowTime,
+      'initial_principal': 0.0,
     });
 
     batch.insert('accounts', {
       'id': 'acc_savings',
       'name': 'High-Yield Savings',
       'type': 'Savings',
-      'balance': 12500.0,
-      'opening_balance': 12500.0,
+      'balance': 7500.0,
+      'opening_balance': 7500.0,
       'credit_limit': 0.0,
       'currency': 'USD',
       'color_value': 0xFF8B5CF6,
       'is_active': 1,
+      'updated_at': nowTime,
+      'initial_principal': 7500.0,
+    });
+
+    // Default Initial Ledger Transactions for Seeded Accounts
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final month = DateTime.now().month;
+    final year = DateTime.now().year;
+
+    batch.insert('transactions', {
+      'title': 'Initial Balance - Cash Wallet',
+      'amount': 350.0,
+      'date': nowMs - 86400000,
+      'month': month,
+      'year': year,
+      'category': 'Salary & Income',
+      'type': 1, // Income
+      'account_id': 'acc_cash',
+      'account_name': 'Cash Wallet',
+      'payment_method': 'Cash',
+      'notes': 'Opening balance transaction',
+      'currency': 'USD',
+      'status': 'cleared',
+    });
+
+    batch.insert('transactions', {
+      'title': 'Initial Balance - Main Checking',
+      'amount': 2500.0,
+      'date': nowMs - 86400000,
+      'month': month,
+      'year': year,
+      'category': 'Salary & Income',
+      'type': 1, // Income
+      'account_id': 'acc_checking',
+      'account_name': 'Main Checking',
+      'payment_method': 'Direct Deposit',
+      'notes': 'Opening balance transaction',
+      'currency': 'USD',
+      'status': 'cleared',
+    });
+
+    batch.insert('transactions', {
+      'title': 'Initial Balance - High-Yield Savings',
+      'amount': 7500.0,
+      'date': nowMs - 86400000,
+      'month': month,
+      'year': year,
+      'category': 'Salary & Income',
+      'type': 1, // Income
+      'account_id': 'acc_savings',
+      'account_name': 'High-Yield Savings',
+      'payment_method': 'Bank Transfer',
+      'notes': 'Opening balance transaction',
+      'currency': 'USD',
+      'status': 'cleared',
     });
 
     // Parent System Categories
@@ -273,24 +386,30 @@ class DatabaseHelper {
     // Default Budgets
     batch.insert('budgets', {
       'id': 'bgt_food',
+      'name': 'Food & Dining',
       'category_id': 'cat_food',
       'category_name': 'Food & Dining',
       'amount_limit': 650.0,
       'envelope_allocated': 650.0,
       'carry_forward': 1,
       'period_type': 'Monthly',
+      'alert_threshold': 0.8,
+      'is_active': 1,
       'month': DateTime.now().month,
       'year': DateTime.now().year,
     });
 
     batch.insert('budgets', {
       'id': 'bgt_transport',
+      'name': 'Transportation',
       'category_id': 'cat_transport',
       'category_name': 'Transportation',
       'amount_limit': 300.0,
       'envelope_allocated': 300.0,
       'carry_forward': 0,
       'period_type': 'Monthly',
+      'alert_threshold': 0.8,
+      'is_active': 1,
       'month': DateTime.now().month,
       'year': DateTime.now().year,
     });
@@ -333,11 +452,25 @@ class DatabaseHelper {
     map['month'] = map['month'] ?? dt.month;
     map['year'] = map['year'] ?? dt.year;
 
-    return await db.insert(
+    final accountId = map['account_id'] as String? ?? 'acc_cash';
+    final amount = (map['amount'] as num?)?.toDouble() ?? 0.0;
+    final type = map['type'] as int? ?? 0;
+    final double delta = (type == 1) ? amount : -amount;
+
+    final id = await db.insert(
       'transactions',
       map,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+
+    // Adjust target wallet/account balance through ledger entry
+    await db.rawUpdate(
+      'UPDATE accounts SET balance = balance + ? WHERE id = ?',
+      [delta, accountId],
+    );
+
+    FinancialSyncService.instance.notifyMutation();
+    return id;
   }
 
   Future<List<Map<String, dynamic>>> getFilteredTransactions(
@@ -544,7 +677,22 @@ class DatabaseHelper {
 
   Future<int> deleteTransaction(int id) async {
     final db = await database;
-    return await db.delete('transactions', where: 'id = ?', whereArgs: [id]);
+    final rows = await db.query('transactions', where: 'id = ?', whereArgs: [id], limit: 1);
+    if (rows.isNotEmpty) {
+      final row = rows.first;
+      final accountId = row['account_id'] as String? ?? 'acc_cash';
+      final amount = (row['amount'] as num?)?.toDouble() ?? 0.0;
+      final type = row['type'] as int? ?? 0;
+      // Revert balance: subtract income, add back expense
+      final double delta = (type == 1) ? -amount : amount;
+      await db.rawUpdate(
+        'UPDATE accounts SET balance = balance + ? WHERE id = ?',
+        [delta, accountId],
+      );
+    }
+    final res = await db.delete('transactions', where: 'id = ?', whereArgs: [id]);
+    FinancialSyncService.instance.notifyMutation();
+    return res;
   }
 
   // --- CATEGORIES CRUD ---
@@ -556,13 +704,23 @@ class DatabaseHelper {
 
   Future<int> insertCategory(Map<String, dynamic> row) async {
     final db = await database;
-    return await db.insert('categories', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    final id = await db.insert('categories', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    FinancialSyncService.instance.notifyMutation();
+    return id;
+  }
+
+  Future<Set<String>> getUsedCategoryNames() async {
+    final db = await database;
+    final result = await db.rawQuery('SELECT DISTINCT category FROM transactions WHERE category IS NOT NULL AND category != ""');
+    return result.map((r) => (r['category'] as String).trim().toLowerCase()).toSet();
   }
 
   Future<int> deleteCategory(String id) async {
     final db = await database;
     // Delete parent category AND any child sub-categories with parent_id == id
-    return await db.delete('categories', where: 'id = ? OR parent_id = ?', whereArgs: [id, id]);
+    final count = await db.delete('categories', where: 'id = ? OR parent_id = ?', whereArgs: [id, id]);
+    FinancialSyncService.instance.notifyMutation();
+    return count;
   }
 
   // --- ACCOUNTS CRUD ---
@@ -574,7 +732,9 @@ class DatabaseHelper {
 
   Future<int> insertAccount(Map<String, dynamic> row) async {
     final db = await database;
-    return await db.insert('accounts', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    final id = await db.insert('accounts', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    FinancialSyncService.instance.notifyMutation();
+    return id;
   }
 
   // --- BUDGETS & GOALS CRUD ---
@@ -586,7 +746,9 @@ class DatabaseHelper {
 
   Future<int> insertBudget(Map<String, dynamic> row) async {
     final db = await database;
-    return await db.insert('budgets', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    final id = await db.insert('budgets', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    FinancialSyncService.instance.notifyMutation();
+    return id;
   }
 
   Future<List<Map<String, dynamic>>> getAllGoals() async {
@@ -596,13 +758,19 @@ class DatabaseHelper {
 
   Future<int> insertGoal(Map<String, dynamic> row) async {
     final db = await database;
-    return await db.insert('goals', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    final id = await db.insert('goals', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    FinancialSyncService.instance.notifyMutation();
+    return id;
   }
 
   Future<void> clearAllData() async {
     final db = await database;
     await db.delete('transactions');
+    await db.delete('accounts');
+    await db.delete('budgets');
+    await db.delete('goals');
     await db.execute('VACUUM;');
+    FinancialSyncService.instance.notifyMutation();
   }
 
   Future<void> close() async {

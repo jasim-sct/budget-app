@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-import '../../../features/categories/domain/category_model.dart';
+import '../../../features/transactions/domain/transaction_model.dart';
 import '../../services/global_filter_controller.dart';
 import '../../services/global_filter_state.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
+import '../app_button.dart';
+import '../app_chip.dart';
 import 'glass_bottom_sheet.dart';
-import 'glass_button.dart';
 
-/// VisionOS Ultra-Premium Glass Filter Modal Sheet.
+/// Global Filter Modal Sheet.
 class GlassFilterModal extends StatefulWidget {
   const GlassFilterModal({super.key});
 
@@ -37,29 +38,25 @@ class _GlassFilterModalState extends State<GlassFilterModal> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.filter_list_rounded, color: AppColors.primaryEmerald, size: 22),
-                      const SizedBox(width: 8),
+                      const Icon(Icons.filter_list_rounded, color: AppColors.primaryBlue, size: 20),
+                      const SizedBox(width: AppSpacing.sm),
                       Text(
-                        'Global Filter & Query Engine',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                          color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                        ),
+                        'Global Filter Engine',
+                        style: AppTypography.headline(isDark),
                       ),
                     ],
                   ),
                   if (filter.isFilterActive)
                     TextButton(
                       onPressed: () => _controller.resetFilters(),
-                      child: const Text('Reset All', style: TextStyle(color: AppColors.expenseRed, fontWeight: FontWeight.w700)),
+                      child: const Text('Reset All', style: TextStyle(color: AppColors.expenseRed, fontWeight: FontWeight.w600)),
                     ),
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
 
               // Time Range Selector
-              Text('TIME RANGE', style: AppTypography.labelSmall(isDark)),
+              Text('TIME RANGE', style: AppTypography.sectionLabel(isDark)),
               const SizedBox(height: AppSpacing.xs),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -76,25 +73,21 @@ class _GlassFilterModalState extends State<GlassFilterModal> {
               const SizedBox(height: AppSpacing.md),
 
               // Transaction Types Multi-Select
-              Text('TRANSACTION TYPE', style: AppTypography.labelSmall(isDark)),
+              Text('TRANSACTION TYPE', style: AppTypography.sectionLabel(isDark)),
               const SizedBox(height: AppSpacing.xs),
               Row(
                 children: [
-                  Expanded(child: _buildTypeChip('Expense', CategoryType.expense, filter)),
-                  const SizedBox(width: 6),
-                  Expanded(child: _buildTypeChip('Income', CategoryType.income, filter)),
-                  const SizedBox(width: 6),
-                  Expanded(child: _buildTypeChip('Transfer', CategoryType.transfer, filter)),
+                  Expanded(child: _buildTypeChip('Expense', TransactionType.expense, filter)),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(child: _buildTypeChip('Income', TransactionType.income, filter)),
                 ],
               ),
-              const SizedBox(height: AppSpacing.xl),
+              const SizedBox(height: AppSpacing.lg),
 
-              GlassButton(
+              AppButton(
                 label: 'Apply Filters (${filter.activeFilterCount} Active)',
-                variant: GlassButtonVariant.gradient,
                 onPressed: () => Navigator.pop(context),
               ),
-              const SizedBox(height: AppSpacing.md),
             ],
           ),
         );
@@ -105,23 +98,21 @@ class _GlassFilterModalState extends State<GlassFilterModal> {
   Widget _buildTimePresetChip(String label, TimeRangePreset preset, GlobalFilterState filter) {
     final isSelected = filter.timeRangePreset == preset;
     return Padding(
-      padding: const EdgeInsets.only(right: 6.0),
-      child: ChoiceChip(
-        selected: isSelected,
-        label: Text(label),
-        selectedColor: AppColors.primaryEmerald,
-        onSelected: (_) => _controller.updateTimeRange(preset),
+      padding: const EdgeInsets.only(right: AppSpacing.xs),
+      child: AppChip(
+        label: label,
+        isSelected: isSelected,
+        onTap: () => _controller.updateTimeRange(preset),
       ),
     );
   }
 
-  Widget _buildTypeChip(String label, CategoryType type, GlobalFilterState filter) {
+  Widget _buildTypeChip(String label, TransactionType type, GlobalFilterState filter) {
     final isSelected = filter.transactionTypes.contains(type);
-    return FilterChip(
-      selected: isSelected,
-      label: Text(label),
-      selectedColor: AppColors.primaryEmerald.withValues(alpha: 0.25),
-      onSelected: (_) => _controller.toggleTransactionType(type),
+    return AppChip(
+      label: label,
+      isSelected: isSelected,
+      onTap: () => _controller.toggleTransactionType(type),
     );
   }
 }

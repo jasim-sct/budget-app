@@ -1,11 +1,10 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import '../../theme/app_colors.dart';
-import '../../theme/app_spacing.dart';
-import '../../theme/app_typography.dart';
-import '../../theme/glass_tokens.dart';
+import '../services/currency_provider.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 
-/// Glassmorphic Text Input component with focus glow border and backdrop blur.
+/// Professional text input – unified with AppTextField styling.
 class GlassInput extends StatefulWidget {
   final TextEditingController? controller;
   final String label;
@@ -58,95 +57,53 @@ class _GlassInputState extends State<GlassInput> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          widget.label.toUpperCase(),
-          style: AppTypography.labelSmall(isDark),
+          widget.label,
+          style: AppTypography.sectionLabel(isDark),
         ),
         const SizedBox(height: AppSpacing.xs),
-        ClipRRect(
-          borderRadius: AppRadius.borderMd,
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: GlassTokens.blurMd, sigmaY: GlassTokens.blurMd),
-            child: TextFormField(
-              controller: widget.controller,
-              focusNode: widget.focusNode,
-              obscureText: _isObscured,
-              keyboardType: widget.keyboardType,
-              onChanged: widget.onChanged,
-              validator: widget.validator,
-              style: widget.isCurrency
-                  ? AppTypography.currency(isDark, fontSize: 24)
-                  : TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                    ),
-              decoration: InputDecoration(
-                hintText: widget.hint,
-                hintStyle: TextStyle(
-                  color: isDark
-                      ? AppColors.darkTextSecondary.withValues(alpha: 0.5)
-                      : AppColors.lightTextSecondary.withValues(alpha: 0.5),
+        TextFormField(
+          controller: widget.controller,
+          focusNode: widget.focusNode,
+          obscureText: _isObscured,
+          keyboardType: widget.keyboardType,
+          onChanged: widget.onChanged,
+          validator: widget.validator,
+          style: widget.isCurrency
+              ? AppTypography.currency(isDark, fontSize: 20)
+              : TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
                 ),
-                filled: true,
-                fillColor: isDark
-                    ? GlassTokens.darkGlassSurface
-                    : GlassTokens.lightGlassSurface,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.lg,
-                  vertical: AppSpacing.md,
-                ),
-                prefixIcon: widget.isCurrency
-                    ? Padding(
-                        padding: const EdgeInsets.only(left: 16, right: 8, top: 12),
+          decoration: InputDecoration(
+            hintText: widget.hint,
+            prefixIcon: widget.isCurrency
+                ? ValueListenableBuilder<CurrencyOption>(
+                    valueListenable: CurrencyProvider.instance,
+                    builder: (context, currency, _) {
+                      return Padding(
+                        padding: const EdgeInsets.only(left: AppSpacing.md, right: AppSpacing.sm, top: 10),
                         child: Text(
-                          '\$',
-                          style: AppTypography.currency(isDark, fontSize: 22, color: AppColors.primaryEmerald),
+                          currency.symbol,
+                          style: AppTypography.currency(isDark, fontSize: 18, color: AppColors.primaryBlue),
                         ),
-                      )
-                    : widget.prefixIcon != null
-                        ? Icon(widget.prefixIcon, size: 20, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)
-                        : null,
-                suffixIcon: widget.obscureText
-                    ? IconButton(
-                        icon: Icon(
-                          _isObscured ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                          size: 20,
-                        ),
-                        onPressed: () => setState(() => _isObscured = !_isObscured),
-                      )
-                    : widget.suffixIcon,
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: AppRadius.borderMd,
-                  borderSide: BorderSide(
-                    color: isDark ? GlassTokens.borderHighlightDark : GlassTokens.borderHighlightLight,
-                    width: 1,
-                  ),
-                ),
-                focusedBorder: const OutlineInputBorder(
-                  borderRadius: AppRadius.borderMd,
-                  borderSide: BorderSide(
-                    color: AppColors.primaryEmerald,
-                    width: 2,
-                  ),
-                ),
-                errorBorder: const OutlineInputBorder(
-                  borderRadius: AppRadius.borderMd,
-                  borderSide: BorderSide(
-                    color: AppColors.expenseRed,
-                    width: 1,
-                  ),
-                ),
-                focusedErrorBorder: const OutlineInputBorder(
-                  borderRadius: AppRadius.borderMd,
-                  borderSide: BorderSide(
-                    color: AppColors.expenseRed,
-                    width: 2,
-                  ),
-                ),
-                errorText: widget.errorText,
-              ),
-            ),
+                      );
+                    },
+                  )
+                : widget.prefixIcon != null
+                    ? Icon(widget.prefixIcon, size: 18, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)
+                    : null,
+            suffixIcon: widget.obscureText
+                ? IconButton(
+                    icon: Icon(
+                      _isObscured ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                      size: 18,
+                    ),
+                    onPressed: () => setState(() => _isObscured = !_isObscured),
+                  )
+                : widget.suffixIcon,
+            errorText: widget.errorText,
           ),
         ),
       ],

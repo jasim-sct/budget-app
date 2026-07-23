@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 
-/// Reusable Chip and Category Tag Component.
+/// Reusable Chip / Tag Component with consistent sizing.
 class AppChip extends StatelessWidget {
   final String label;
   final IconData? icon;
@@ -22,18 +22,19 @@ class AppChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final activeColor = color ?? AppColors.primaryEmerald;
+    final activeColor = color ?? AppColors.primaryBlue;
 
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
+      borderRadius: AppRadius.borderSm,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected
               ? activeColor
               : (isDark ? AppColors.darkSurfaceLight : AppColors.lightSurfaceSecondary),
-          borderRadius: AppRadius.borderPill,
+          borderRadius: AppRadius.borderSm,
           border: Border.all(
             color: isSelected
                 ? activeColor
@@ -52,13 +53,13 @@ class AppChip extends StatelessWidget {
                     ? Colors.white
                     : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: AppSpacing.xs),
             ],
             Text(
               label,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected
                     ? Colors.white
                     : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),

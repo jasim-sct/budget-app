@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
-/// Animated Circular Progress Painter for Budget percentage visualization.
+/// Animated Circular Progress Painter for budget/goal percentage visualization.
 class AnimatedCircularProgress extends StatelessWidget {
   final double progress; // 0.0 to 1.0+
   final double size;
@@ -25,14 +25,14 @@ class AnimatedCircularProgress extends StatelessWidget {
     final progressColor = color ??
         (progress > 1.0
             ? AppColors.expenseRed
-            : (progress > 0.8 ? AppColors.warningOrange : AppColors.primaryEmerald));
+            : (progress > 0.8 ? AppColors.warningOrange : AppColors.incomeGreen));
 
     return SizedBox(
       width: size,
       height: size,
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(begin: 0.0, end: progress.clamp(0.0, 1.0)),
-        duration: const Duration(milliseconds: 800),
+        duration: const Duration(milliseconds: 500),
         curve: Curves.easeOutCubic,
         builder: (context, animValue, child) {
           return Stack(

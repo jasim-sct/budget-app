@@ -1,0 +1,73 @@
+import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_typography.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/animated_circular_progress.dart';
+
+/// Budget Health Summary Card component.
+class BudgetHealthCard extends StatelessWidget {
+  final double totalSpent;
+  final double totalLimit;
+  final int healthScore;
+  final double overallRatio;
+
+  const BudgetHealthCard({
+    super.key,
+    required this.totalSpent,
+    required this.totalLimit,
+    required this.healthScore,
+    required this.overallRatio,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCardBg : AppColors.lightCardBg,
+        borderRadius: AppRadius.borderMd,
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          width: 1.0,
+        ),
+      ),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        children: [
+          AnimatedCircularProgress(
+            progress: overallRatio.clamp(0.0, 1.0),
+            size: 80,
+            strokeWidth: 8,
+            centerChild: Text(
+              '$healthScore',
+              style: AppTypography.displayMedium(isDark).copyWith(fontSize: 20),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'BUDGET HEALTH SCORE',
+                  style: AppTypography.sectionLabel(isDark),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  AppFormatters.currency(totalSpent),
+                  style: AppTypography.currency(isDark, fontSize: 22),
+                ),
+                Text(
+                  'of ${AppFormatters.currency(totalLimit)} envelope limit',
+                  style: AppTypography.caption(isDark),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

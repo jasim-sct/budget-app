@@ -1,13 +1,11 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
-import '../../theme/glass_tokens.dart';
 
 enum GlassButtonVariant { primary, secondary, gradient, danger }
 
-/// Frosted Glass Button component with glowing edges and scale micro-animations.
-class GlassButton extends StatefulWidget {
+/// Professional button – delegates to same styling as AppButton.
+class GlassButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final GlassButtonVariant variant;
@@ -15,6 +13,7 @@ class GlassButton extends StatefulWidget {
   final bool isLoading;
   final bool isFullWidth;
   final double height;
+  final double? borderRadius;
 
   const GlassButton({
     super.key,
@@ -24,131 +23,79 @@ class GlassButton extends StatefulWidget {
     this.icon,
     this.isLoading = false,
     this.isFullWidth = true,
-    this.height = 52.0,
+    this.height = 44.0,
+    this.borderRadius,
   });
-
-  @override
-  State<GlassButton> createState() => _GlassButtonState();
-}
-
-class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-      lowerBound: 0.0,
-      upperBound: 0.04,
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.96).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isDisabled = widget.onPressed == null || widget.isLoading;
+    final isDisabled = onPressed == null || isLoading;
+    final radius = BorderRadius.circular(borderRadius ?? AppRadius.sm);
 
-    Color glassBg;
+    Color bgColor;
     Color textColor;
-    Gradient? gradient;
-    List<BoxShadow>? shadow;
 
-    switch (widget.variant) {
+    switch (variant) {
       case GlassButtonVariant.primary:
-        glassBg = AppColors.primaryEmerald.withValues(alpha: 0.85);
-        textColor = Colors.white;
-        shadow = AppShadows.glow(AppColors.primaryEmerald);
-        break;
       case GlassButtonVariant.gradient:
-        glassBg = Colors.transparent;
-        gradient = AppColors.primaryGradient;
+        bgColor = AppColors.primaryBlue;
         textColor = Colors.white;
-        shadow = AppShadows.glow(AppColors.primaryEmerald);
         break;
       case GlassButtonVariant.secondary:
-        glassBg = isDark ? const Color(0x351E293B) : const Color(0x70FFFFFF);
+        bgColor = isDark ? AppColors.darkSurfaceLight : AppColors.lightSurfaceSecondary;
         textColor = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
         break;
       case GlassButtonVariant.danger:
-        glassBg = AppColors.expenseRed.withValues(alpha: 0.85);
+        bgColor = AppColors.expenseRed;
         textColor = Colors.white;
-        shadow = AppShadows.glow(AppColors.expenseRed);
         break;
     }
 
     final childContent = Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: widget.isFullWidth ? MainAxisSize.max : MainAxisSize.min,
+      mainAxisSize: isFullWidth ? MainAxisSize.max : MainAxisSize.min,
       children: [
-        if (widget.isLoading) ...[
+        if (isLoading) ...[
           SizedBox(
-            width: 20,
-            height: 20,
+            width: 16,
+            height: 16,
             child: CircularProgressIndicator(
-              strokeWidth: 2.5,
+              strokeWidth: 2.0,
               valueColor: AlwaysStoppedAnimation<Color>(textColor),
             ),
           ),
-          const SizedBox(width: 10),
-        ] else if (widget.icon != null) ...[
-          Icon(widget.icon, size: 20, color: textColor),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.sm),
+        ] else if (icon != null) ...[
+          Icon(icon, size: 18, color: textColor),
+          const SizedBox(width: AppSpacing.sm),
         ],
         Text(
-          widget.label,
+          label,
           style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.2,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
             color: textColor,
           ),
         ),
       ],
     );
 
-    return AnimatedBuilder(
-      animation: _scaleAnimation,
-      builder: (context, child) => Transform.scale(
-        scale: _scaleAnimation.value,
-        child: child,
-      ),
-      child: GestureDetector(
-        onTapDown: (_) => !isDisabled ? _controller.forward() : null,
-        onTapUp: (_) => !isDisabled ? _controller.reverse() : null,
-        onTapCancel: () => !isDisabled ? _controller.reverse() : null,
-        onTap: isDisabled ? null : widget.onPressed,
-        child: ClipRRect(
-          borderRadius: AppRadius.borderMd,
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: GlassTokens.blurMd, sigmaY: GlassTokens.blurMd),
-            child: Container(
-              width: widget.isFullWidth ? double.infinity : null,
-              height: widget.height,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              decoration: BoxDecoration(
-                color: gradient == null ? glassBg : null,
-                gradient: gradient,
-                borderRadius: AppRadius.borderMd,
-                border: Border.all(
-                  color: isDark ? GlassTokens.borderHighlightDark : GlassTokens.borderHighlightLight,
-                  width: 1.2,
-                ),
-                boxShadow: shadow,
-              ),
-              child: Center(child: childContent),
+    return SizedBox(
+      width: isFullWidth ? double.infinity : null,
+      height: height,
+      child: Material(
+        color: bgColor,
+        borderRadius: radius,
+        child: InkWell(
+          onTap: isDisabled ? null : onPressed,
+          borderRadius: radius,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            decoration: BoxDecoration(
+              borderRadius: radius,
             ),
+            child: Center(child: childContent),
           ),
         ),
       ),

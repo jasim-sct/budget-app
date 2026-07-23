@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import '../state/month_selector_controller.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 import '../utils/formatters.dart';
-import 'glass/glass_container.dart';
 
-/// Glassmorphic Month Selector Header Bar.
-/// Embedded across Dashboard, Transactions, Budgets, Analytics, and Reports.
+/// Month Selector Header Bar – consistent across Dashboard, Budgets, Analytics, Reports.
 class MonthSelectorBar extends StatelessWidget {
   const MonthSelectorBar({super.key});
 
@@ -22,8 +21,8 @@ class MonthSelectorBar extends StatelessWidget {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: isDark
-                ? const ColorScheme.dark(primary: AppColors.primaryEmerald)
-                : const ColorScheme.light(primary: AppColors.primaryEmerald),
+                ? const ColorScheme.dark(primary: AppColors.primaryBlue)
+                : const ColorScheme.light(primary: AppColors.primaryBlue),
           ),
           child: child!,
         );
@@ -46,49 +45,52 @@ class MonthSelectorBar extends StatelessWidget {
         final isCurrentMonth = MonthSelectorController.instance.isCurrentMonth;
 
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
-          child: GlassContainer(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
-            borderRadius: AppRadius.borderPill,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left_rounded, size: 22),
-                  onPressed: () => MonthSelectorController.instance.previousMonth(),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  splashRadius: 18,
-                ),
-                GestureDetector(
-                  onTap: () => _showMonthPicker(context, selectedDate),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+            borderRadius: AppRadius.borderSm,
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              width: 1,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left_rounded, size: 20),
+                onPressed: () => MonthSelectorController.instance.previousMonth(),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+              InkWell(
+                onTap: () => _showMonthPicker(context, selectedDate),
+                borderRadius: AppRadius.borderXs,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.calendar_today_rounded, size: 15, color: AppColors.primaryEmerald),
-                      const SizedBox(width: 8),
+                      const Icon(Icons.calendar_today_rounded, size: 14, color: AppColors.primaryBlue),
+                      const SizedBox(width: AppSpacing.sm),
                       Text(
                         monthStr,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                        ),
+                        style: AppTypography.titleMedium(isDark),
                       ),
                       if (isCurrentMonth) ...[
-                        const SizedBox(width: 6),
+                        const SizedBox(width: AppSpacing.sm),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryEmerald.withValues(alpha: 0.2),
-                            borderRadius: AppRadius.borderPill,
+                            color: AppColors.primaryBlue.withValues(alpha: 0.12),
+                            borderRadius: AppRadius.borderXs,
                           ),
-                          child: const Text(
+                          child: Text(
                             'CURRENT',
                             style: TextStyle(
                               fontSize: 9,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.primaryEmerald,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primaryBlue,
                             ),
                           ),
                         ),
@@ -96,15 +98,14 @@ class MonthSelectorBar extends StatelessWidget {
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right_rounded, size: 22),
-                  onPressed: () => MonthSelectorController.instance.nextMonth(),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  splashRadius: 18,
-                ),
-              ],
-            ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right_rounded, size: 20),
+                onPressed: () => MonthSelectorController.instance.nextMonth(),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            ],
           ),
         );
       },

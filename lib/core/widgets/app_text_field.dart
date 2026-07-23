@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import '../services/currency_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
-/// Animated floating input field with validation, clear button, and suffix action.
+/// Professional text field with label, validation, and consistent sizing.
 class AppTextField extends StatefulWidget {
   final TextEditingController? controller;
   final String label;
@@ -56,8 +57,8 @@ class _AppTextFieldState extends State<AppTextField> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          widget.label.toUpperCase(),
-          style: AppTypography.labelSmall(isDark),
+          widget.label,
+          style: AppTypography.sectionLabel(isDark),
         ),
         const SizedBox(height: AppSpacing.xs),
         TextFormField(
@@ -68,72 +69,40 @@ class _AppTextFieldState extends State<AppTextField> {
           onChanged: widget.onChanged,
           validator: widget.validator,
           style: widget.isCurrency
-              ? AppTypography.currency(isDark, fontSize: 24)
+              ? AppTypography.currency(isDark, fontSize: 20)
               : TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
                   color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
                 ),
           decoration: InputDecoration(
             hintText: widget.hint,
-            hintStyle: TextStyle(
-              color: isDark ? AppColors.darkTextSecondary.withValues(alpha: 0.5) : AppColors.lightTextSecondary.withValues(alpha: 0.5),
-            ),
-            filled: true,
-            fillColor: isDark ? AppColors.darkSurfaceLight : AppColors.lightSurfaceSecondary,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-              vertical: AppSpacing.md,
-            ),
             prefixIcon: widget.isCurrency
-                ? Padding(
-                    padding: const EdgeInsets.only(left: 16, right: 8, top: 12),
-                    child: Text(
-                      '\$',
-                      style: AppTypography.currency(isDark, fontSize: 22, color: AppColors.primaryEmerald),
-                    ),
+                ? ValueListenableBuilder<CurrencyOption>(
+                    valueListenable: CurrencyProvider.instance,
+                    builder: (context, currency, _) {
+                      return Padding(
+                        padding: const EdgeInsets.only(left: AppSpacing.md, right: AppSpacing.sm, top: 10),
+                        child: Text(
+                          currency.symbol,
+                          style: AppTypography.currency(isDark, fontSize: 18, color: AppColors.primaryBlue),
+                        ),
+                      );
+                    },
                   )
                 : widget.prefixIcon != null
-                    ? Icon(widget.prefixIcon, size: 20, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)
+                    ? Icon(widget.prefixIcon, size: 18, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)
                     : null,
             suffixIcon: widget.obscureText
                 ? IconButton(
                     icon: Icon(
                       _isObscured ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                       color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                      size: 20,
+                      size: 18,
                     ),
                     onPressed: () => setState(() => _isObscured = !_isObscured),
                   )
                 : widget.suffixIcon,
-            enabledBorder: OutlineInputBorder(
-              borderRadius: AppRadius.borderMd,
-              borderSide: BorderSide(
-                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                width: 1,
-              ),
-            ),
-            focusedBorder: const OutlineInputBorder(
-              borderRadius: AppRadius.borderMd,
-              borderSide: BorderSide(
-                color: AppColors.primaryEmerald,
-                width: 2,
-              ),
-            ),
-            errorBorder: const OutlineInputBorder(
-              borderRadius: AppRadius.borderMd,
-              borderSide: BorderSide(
-                color: AppColors.expenseRed,
-                width: 1,
-              ),
-            ),
-            focusedErrorBorder: const OutlineInputBorder(
-              borderRadius: AppRadius.borderMd,
-              borderSide: BorderSide(
-                color: AppColors.expenseRed,
-                width: 2,
-              ),
-            ),
             errorText: widget.errorText,
           ),
         ),

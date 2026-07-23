@@ -3,13 +3,13 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/widgets/glass/glass_button.dart';
-import '../../../core/widgets/glass/glass_card.dart';
-import '../../../core/widgets/glass/glass_input.dart';
+import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_text_field.dart';
+import '../../../core/widgets/glass/glass_bottom_sheet.dart';
 import '../data/goal_repository.dart';
 import '../domain/goal_model.dart';
 
-/// Modal dialog for adding savings goals with required monthly savings calculator.
+/// Modal bottom sheet for adding savings goals with required monthly savings calculator.
 class AddGoalDialog extends StatefulWidget {
   const AddGoalDialog({super.key});
 
@@ -73,14 +73,8 @@ class _AddGoalDialogState extends State<AddGoalDialog> {
     final monthsRemaining = (_targetDate.difference(DateTime.now()).inDays / 30).clamp(1.0, 120.0);
     final requiredMonthly = (target - current) > 0 ? (target - current) / monthsRemaining : 0.0;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-        top: 24,
-        left: AppSpacing.lg,
-        right: AppSpacing.lg,
-      ),
-      child: GlassCard(
+    return GlassBottomSheet(
+      child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,12 +83,8 @@ class _AddGoalDialogState extends State<AddGoalDialog> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Create Financial Savings Goal',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                  ),
+                  'Create Savings Goal',
+                  style: AppTypography.headline(isDark),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close_rounded, size: 20),
@@ -103,25 +93,25 @@ class _AddGoalDialogState extends State<AddGoalDialog> {
               ],
             ),
             const SizedBox(height: AppSpacing.md),
-            GlassInput(
+            AppTextField(
               controller: _titleController,
-              label: 'Goal Title',
+              label: 'GOAL TITLE',
               hint: 'e.g. Emergency Reserve, Vacation, House',
               prefixIcon: Icons.flag_rounded,
             ),
             const SizedBox(height: AppSpacing.md),
-            GlassInput(
+            AppTextField(
               controller: _targetController,
-              label: 'Target Goal Amount',
+              label: 'TARGET GOAL AMOUNT',
               hint: '5000.00',
               isCurrency: true,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: AppSpacing.md),
-            GlassInput(
+            AppTextField(
               controller: _initialController,
-              label: 'Initial Starting Savings',
+              label: 'INITIAL STARTING SAVINGS',
               hint: '0.00',
               isCurrency: true,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -130,57 +120,54 @@ class _AddGoalDialogState extends State<AddGoalDialog> {
             const SizedBox(height: AppSpacing.md),
 
             // Target Date Picker
-            Text('TARGET DATE', style: AppTypography.labelSmall(isDark)),
+            Text('TARGET DATE', style: AppTypography.sectionLabel(isDark)),
             const SizedBox(height: AppSpacing.xs),
             GestureDetector(
               onTap: _pickDate,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkSurfaceLight : AppColors.lightSurfaceSecondary,
-                  borderRadius: AppRadius.borderMd,
+                  borderRadius: AppRadius.borderSm,
+                  border: Border.all(
+                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    width: 1,
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       AppFormatters.dateShort(_targetDate),
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                      ),
+                      style: AppTypography.titleMedium(isDark),
                     ),
-                    const Icon(Icons.calendar_month_rounded, color: AppColors.primaryEmerald, size: 20),
+                    const Icon(Icons.calendar_month_rounded, color: AppColors.primaryBlue, size: 18),
                   ],
                 ),
               ),
             ),
 
             if (target > 0) ...[
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.md),
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryEmerald.withValues(alpha: 0.15),
-                  borderRadius: AppRadius.borderMd,
+                  color: AppColors.primaryBlue.withValues(alpha: 0.12),
+                  borderRadius: AppRadius.borderSm,
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.calculate_outlined, color: AppColors.primaryEmerald, size: 22),
-                    const SizedBox(width: 10),
+                    const Icon(Icons.calculate_outlined, color: AppColors.primaryBlue, size: 20),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('REQUIRED MONTHLY SAVINGS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.primaryEmerald)),
+                          Text('REQUIRED MONTHLY SAVINGS', style: AppTypography.sectionLabel(isDark).copyWith(color: AppColors.primaryBlue)),
+                          const SizedBox(height: AppSpacing.xxs),
                           Text(
                             '${AppFormatters.currency(requiredMonthly)} / month',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                              color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                            ),
+                            style: AppTypography.titleLarge(isDark),
                           ),
                         ],
                       ),
@@ -190,13 +177,11 @@ class _AddGoalDialogState extends State<AddGoalDialog> {
               ),
             ],
 
-            const SizedBox(height: AppSpacing.xl),
-            GlassButton(
+            const SizedBox(height: AppSpacing.lg),
+            AppButton(
               label: 'Create Goal',
               onPressed: _save,
-              variant: GlassButtonVariant.primary,
             ),
-            const SizedBox(height: AppSpacing.lg),
           ],
         ),
       ),

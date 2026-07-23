@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import '../../../../core/constants/db_constants.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/state/month_selector_controller.dart';
 import '../../domain/models/budget_model.dart';
 
 class BudgetSpentSummary {
@@ -20,24 +21,40 @@ class BudgetDao {
 
   BudgetDao(this._dbHelper);
 
-  Future<List<BudgetSpentSummary>> getBudgetsWithSpent() async {
+  Future<List<BudgetSpentSummary>> getBudgetsWithSpent({int? year, int? month}) async {
     final db = await _dbHelper.database;
     final budgetMaps = await db.query(DbConstants.tableBudgets, where: 'is_active = 1');
-    
+    if (budgetMaps.isEmpty) return [];
+
+    final activeDate = MonthSelectorController.instance.value;
+    final targetYear = year ?? activeDate.year;
+    final targetMonth = month ?? activeDate.month;
+
+    // Single JOIN / GROUP BY query for month spending performance
+    final spendingRows = await db.rawQuery('''
+      SELECT category, sub_category, SUM(amount) AS total_spent
+      FROM ${DbConstants.tableTransactions}
+      WHERE type = 0 AND year = ? AND month = ?
+      GROUP BY category, sub_category
+    ''', [targetYear, targetMonth]);
+
+    final Map<String, double> spendingMap = {};
+    for (final row in spendingRows) {
+      final cat = row['category'] as String? ?? '';
+      final subCat = row['sub_category'] as String? ?? '';
+      final spent = (row['total_spent'] as num?)?.toDouble() ?? 0.0;
+      spendingMap[cat.toLowerCase()] = (spendingMap[cat.toLowerCase()] ?? 0.0) + spent;
+      if (subCat.isNotEmpty) {
+        spendingMap[subCat.toLowerCase()] = (spendingMap[subCat.toLowerCase()] ?? 0.0) + spent;
+      }
+    }
+
     final List<BudgetSpentSummary> summaries = [];
     for (final map in budgetMaps) {
       final budget = BudgetModel.fromMap(map);
-      
-      // SQL aggregate query matching category_id, name, and sub_category
-      final res = await db.rawQuery(
-        'SELECT SUM(amount) as total FROM ${DbConstants.tableTransactions} WHERE (category = ? OR category = ? OR sub_category = ?) AND type = 0',
-        [budget.categoryId, budget.name, budget.name],
-      );
-      
-      double spent = 0.0;
-      if (res.isNotEmpty && res.first['total'] != null) {
-        spent = (res.first['total'] as num).toDouble();
-      }
+      final keyName = budget.name.toLowerCase();
+      final keyId = budget.categoryId.toLowerCase();
+      final spent = spendingMap[keyName] ?? spendingMap[keyId] ?? 0.0;
 
       summaries.add(BudgetSpentSummary(budget: budget, spent: spent));
     }
@@ -52,6 +69,10 @@ class BudgetDao {
       budget.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+  }
+
+  Future<void> insertBudget(BudgetModel budget) async {
+    await saveBudget(budget);
   }
 
   Future<void> deleteBudget(String id) async {

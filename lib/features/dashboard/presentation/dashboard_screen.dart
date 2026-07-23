@@ -167,7 +167,7 @@ class _DashboardHeaderState extends State<DashboardHeader> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Text(
-                      _hideBalance ? '\$••••••••' : AppFormatters.currency(metrics.netCashFlow),
+                      _hideBalance ? '\$••••••••' : AppFormatters.currency(metrics.netWorth),
                       style: const TextStyle(
                         fontSize: 34,
                         fontWeight: FontWeight.w900,

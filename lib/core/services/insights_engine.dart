@@ -41,11 +41,12 @@ class InsightsEngine {
         ),
       );
     } else if (expense > income && income > 0) {
+      final deficit = expense - income;
       insights.add(
         InsightItem(
           title: 'Cash Flow Deficit Alert',
-          description: 'Expenses exceed income by \$${(expense - income).toStringAsFixed(2)} this month.',
-          value: '-\$${(expense - income).toStringAsFixed(0)}',
+          description: 'Expenses exceed income by ${AppFormatters.currency(deficit)} this month.',
+          value: '-${AppFormatters.currency(deficit)}',
           type: 'warning',
         ),
       );
@@ -62,7 +63,7 @@ class InsightsEngine {
         InsightItem(
           title: 'Top Category Outflow',
           description: '$catName represents $catPct% of all expenses in ${AppFormatters.monthName(month)}.',
-          value: '\$${catTotal.toStringAsFixed(0)}',
+          value: AppFormatters.currency(catTotal),
           type: 'neutral',
         ),
       );
@@ -74,8 +75,8 @@ class InsightsEngine {
     insights.add(
       InsightItem(
         title: 'Daily Spend Burn Rate',
-        description: 'Averaging \$${dailyAvg.toStringAsFixed(2)} per day across $daysInMonth days.',
-        value: '\$${dailyAvg.toStringAsFixed(0)}/day',
+        description: 'Averaging ${AppFormatters.currency(dailyAvg)} per day across $daysInMonth days.',
+        value: '${AppFormatters.currency(dailyAvg)}/day',
         type: 'neutral',
       ),
     );

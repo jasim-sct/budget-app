@@ -1,4 +1,4 @@
-import '../../../features/categories/domain/category_model.dart';
+import '../../../features/transactions/domain/transaction_model.dart';
 import '../state/micro_notifier.dart';
 import '../state/month_selector_controller.dart';
 import 'global_filter_state.dart';
@@ -36,8 +36,8 @@ class GlobalFilterController {
     );
   }
 
-  void toggleTransactionType(CategoryType type) {
-    final current = Set<CategoryType>.from(state.transactionTypes);
+  void toggleTransactionType(TransactionType type) {
+    final current = Set<TransactionType>.from(state.transactionTypes);
     if (current.contains(type)) {
       current.remove(type);
     } else {

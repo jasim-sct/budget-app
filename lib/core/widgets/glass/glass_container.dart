@@ -1,10 +1,9 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
-import '../../theme/glass_tokens.dart';
 
-/// Reusable GlassContainer featuring BackdropFilter blur, semi-transparent frosted background,
-/// linear border highlights, and soft ambient shadow reflections.
+/// Reusable container with consistent padding, border, radius, and shadow.
+/// No BackdropFilter blur – uses solid backgrounds for performance.
 class GlassContainer extends StatelessWidget {
   final Widget child;
   final double blur;
@@ -21,8 +20,8 @@ class GlassContainer extends StatelessWidget {
   const GlassContainer({
     super.key,
     required this.child,
-    this.blur = GlassTokens.blurMd,
-    this.opacity = GlassTokens.opacityMd,
+    this.blur = 0,
+    this.opacity = 0.05,
     this.padding,
     this.margin,
     this.borderRadius,
@@ -39,34 +38,26 @@ class GlassContainer extends StatelessWidget {
     final defaultRadius = borderRadius ?? AppRadius.borderMd;
 
     final defaultBg = glassColor ??
-        (isDark ? GlassTokens.darkGlassBg : GlassTokens.lightGlassBg);
+        (isDark ? AppColors.darkCardBg : AppColors.lightCardBg);
 
     final border = Border.all(
-      color: borderColor ?? (isDark ? GlassTokens.borderHighlightDark : GlassTokens.borderHighlightLight),
-      width: 1.2,
+      color: borderColor ?? (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+      width: 1.0,
     );
 
-    Widget frostedBox = Container(
+    Widget container = Container(
       margin: margin,
-      child: ClipRRect(
+      padding: padding ?? const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: gradient == null ? defaultBg : null,
+        gradient: gradient,
         borderRadius: defaultRadius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-          child: Container(
-            padding: padding ?? const EdgeInsets.all(AppSpacing.lg),
-            decoration: BoxDecoration(
-              color: gradient == null ? defaultBg : null,
-              gradient: gradient,
-              borderRadius: defaultRadius,
-              border: border,
-              boxShadow: boxShadow ?? AppShadows.card,
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: child,
-            ),
-          ),
-        ),
+        border: border,
+        boxShadow: boxShadow ?? (isDark ? AppShadows.none : AppShadows.sm),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: child,
       ),
     );
 
@@ -77,11 +68,11 @@ class GlassContainer extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: defaultRadius,
-          child: frostedBox,
+          child: container,
         ),
       );
     }
 
-    return frostedBox;
+    return container;
   }
 }

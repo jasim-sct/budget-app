@@ -3,10 +3,9 @@ import '../services/global_filter_controller.dart';
 import '../services/global_filter_state.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
-import 'glass/glass_card.dart';
 import 'glass/glass_filter_modal.dart';
 
-/// Floating VisionOS Glass Global Filter Bar.
+/// Global Filter Bar with search input and filter badge.
 class GlobalFilterBar extends StatefulWidget {
   const GlobalFilterBar({super.key});
 
@@ -40,11 +39,19 @@ class _GlobalFilterBarState extends State<GlobalFilterBar> {
     return ValueListenableBuilder<GlobalFilterState>(
       valueListenable: _controller.filterNotifier,
       builder: (context, filter, _) {
-        return GlassCard(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkCardBg : AppColors.lightCardBg,
+            borderRadius: AppRadius.borderSm,
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              width: 1,
+            ),
+          ),
           child: Row(
             children: [
-              const Icon(Icons.search_rounded, color: AppColors.primaryEmerald, size: 20),
+              const Icon(Icons.search_rounded, color: AppColors.primaryBlue, size: 18),
               const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: TextField(
@@ -54,52 +61,63 @@ class _GlobalFilterBarState extends State<GlobalFilterBar> {
                     fontSize: 13,
                     color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
                   ),
-                  decoration: const InputDecoration(
-                    hintText: 'Search merchant, category, notes, tags...',
+                  decoration: InputDecoration(
+                    hintText: 'Search merchant, category, notes...',
+                    hintStyle: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    ),
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    filled: false,
                     isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                   ),
                 ),
               ),
               if (_searchController.text.isNotEmpty || filter.isFilterActive)
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, size: 18),
+                  icon: const Icon(Icons.close_rounded, size: 16),
                   onPressed: () {
                     _searchController.clear();
                     _controller.resetFilters();
                   },
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 ),
-              GestureDetector(
+              InkWell(
                 onTap: _openFilterModal,
+                borderRadius: AppRadius.borderSm,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: filter.isFilterActive
-                        ? AppColors.primaryEmerald.withValues(alpha: 0.25)
+                        ? AppColors.primaryBlue.withValues(alpha: 0.12)
                         : (isDark ? AppColors.darkSurfaceLight : AppColors.lightSurfaceSecondary),
-                    borderRadius: AppRadius.borderPill,
+                    borderRadius: AppRadius.borderSm,
                     border: filter.isFilterActive
-                        ? Border.all(color: AppColors.primaryEmerald, width: 1)
-                        : null,
+                        ? Border.all(color: AppColors.primaryBlue, width: 1)
+                        : Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder, width: 1),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         Icons.tune_rounded,
                         size: 14,
-                        color: filter.isFilterActive ? AppColors.primaryEmerald : (isDark ? Colors.white70 : Colors.black87),
+                        color: filter.isFilterActive ? AppColors.primaryBlue : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
                       ),
                       if (filter.activeFilterCount > 0) ...[
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppSpacing.xs),
                         Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: AppColors.primaryEmerald,
-                            shape: BoxShape.circle,
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryBlue,
+                            borderRadius: AppRadius.borderXs,
                           ),
                           child: Text(
                             '${filter.activeFilterCount}',
-                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white),
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white),
                           ),
                         ),
                       ],

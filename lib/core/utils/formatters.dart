@@ -1,3 +1,5 @@
+import '../services/currency_provider.dart';
+
 /// Fast, lightweight formatting utilities without third-party `intl` package heap overhead.
 abstract class AppFormatters {
   static const List<String> monthNames = [
@@ -10,7 +12,8 @@ abstract class AppFormatters {
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
   ];
 
-  static String currency(double amount, {String symbol = '\$'}) {
+  static String currency(double amount, {String? symbol}) {
+    final String actualSymbol = symbol ?? CurrencyProvider.instance.currentSymbol;
     final bool isNegative = amount < 0;
     final double absAmount = amount.abs();
     final String formatted = absAmount.toStringAsFixed(2);
@@ -33,7 +36,7 @@ abstract class AppFormatters {
     }
 
     final String reversedInt = buffer.toString().split('').reversed.join('');
-    final String result = '$symbol$reversedInt.$decPart';
+    final String result = '$actualSymbol$reversedInt.$decPart';
 
     return isNegative ? '-$result' : result;
   }

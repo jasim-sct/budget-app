@@ -1,3 +1,4 @@
+import '../../../core/services/financial_sync_service.dart';
 import '../../../core/state/micro_notifier.dart';
 import '../domain/models/account_model.dart';
 import '../domain/repositories/account_repository.dart';
@@ -33,7 +34,9 @@ class AccountsController {
     const AccountsState(accounts: [], totalBalance: 0.0, isLoading: false),
   );
 
-  AccountsController(this._repository);
+  AccountsController(this._repository) {
+    FinancialSyncService.instance.addListener(loadAccounts);
+  }
 
   Future<void> loadAccounts() async {
     stateNotifier.update(stateNotifier.value.copyWith(isLoading: true));

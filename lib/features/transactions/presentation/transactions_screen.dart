@@ -11,8 +11,7 @@ import '../domain/transaction_model.dart';
 import 'add_transaction_dialog.dart';
 import 'widgets/transaction_item_tile.dart';
 
-/// Modern VisionOS Frosted Glass Transaction Ledger Screen.
-/// Connected to Enterprise GlobalFilterController.
+/// Master Financial Ledger Screen.
 class TransactionsScreen extends StatefulWidget {
   final TransactionRepository repository;
 
@@ -79,18 +78,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(
-          'Master Financial Ledger',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
-        ),
+        title: const Text('Ledger'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.category_outlined, color: AppColors.primaryEmerald),
-            tooltip: 'Categories Taxonomy',
+            icon: const Icon(Icons.category_outlined, size: 20),
+            tooltip: 'Categories',
             onPressed: () {
               Navigator.push(
                 context,
@@ -99,8 +92,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.analytics_outlined, color: AppColors.primaryEmerald),
-            tooltip: 'Financial Statements',
+            icon: const Icon(Icons.analytics_outlined, size: 20),
+            tooltip: 'Reports',
             onPressed: () {
               Navigator.push(
                 context,
@@ -112,13 +105,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       ),
       body: Column(
         children: [
-          // Enterprise Global Filter Bar
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
-            child: GlobalFilterBar(),
+          // Global Filter Bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+            child: const GlobalFilterBar(),
           ),
 
-          // Master Ledger Transaction List
+          // Transaction List
           Expanded(
             child: ListenableBuilder(
               listenable: widget.repository.stateNotifier,
@@ -128,8 +121,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 if (state.isLoading && state.transactions.isEmpty) {
                   return const Center(
                     child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      color: AppColors.primaryEmerald,
+                      strokeWidth: 2.0,
+                      color: AppColors.primaryBlue,
                     ),
                   );
                 }
@@ -139,27 +132,27 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 if (displayList.isEmpty) {
                   return EmptyStateWidget(
                     icon: Icons.receipt_long_outlined,
-                    title: 'No Financial Records Found',
+                    title: 'No Transactions Found',
                     description: GlobalFilterController.instance.state.isFilterActive
-                        ? 'No transactions matched the active query filters. Try resetting your global search filter.'
-                        : 'Your master ledger is empty. Tap below to log your first transaction.',
-                    actionLabel: 'Log First Transaction',
+                        ? 'No transactions matched the active filters. Try resetting your search filter.'
+                        : 'Your ledger is empty. Tap below to log your first transaction.',
+                    actionLabel: 'Add Transaction',
                     onActionTap: _openAddTransactionModal,
                   );
                 }
 
                 return ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 80),
                   itemCount: displayList.length + (state.hasMore ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == displayList.length) {
                       return const Padding(
-                        padding: EdgeInsets.all(AppSpacing.lg),
+                        padding: EdgeInsets.all(AppSpacing.md),
                         child: Center(
                           child: CircularProgressIndicator(
                             strokeWidth: 2.0,
-                            color: AppColors.primaryEmerald,
+                            color: AppColors.primaryBlue,
                           ),
                         ),
                       );
@@ -167,7 +160,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
                     final tx = displayList[index];
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                       child: TransactionItemTile(
                         transaction: tx,
                         onDelete: () {
@@ -185,14 +178,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         ],
       ),
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 75),
+        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
         child: FloatingActionButton.extended(
+          heroTag: 'fab_transactions_screen',
           onPressed: _openAddTransactionModal,
-          backgroundColor: AppColors.primaryEmerald,
-          foregroundColor: Colors.white,
-          elevation: 4,
-          icon: const Icon(Icons.add_rounded, size: 24),
-          label: const Text('Add Entry', style: TextStyle(fontWeight: FontWeight.w800)),
+          icon: const Icon(Icons.add_rounded, size: 20),
+          label: const Text('Add Entry'),
         ),
       ),
     );

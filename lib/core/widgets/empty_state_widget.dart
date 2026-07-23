@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 
-/// Premium Empty State Placeholder with Vector Icon and Action Button.
+/// Professional empty state placeholder with icon and action button.
 class EmptyStateWidget extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -25,54 +26,50 @@ class EmptyStateWidget extends StatelessWidget {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xxl),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 80,
-              height: 80,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
-                color: AppColors.primaryEmerald.withValues(alpha: 0.12),
+                color: (isDark ? AppColors.darkSurfaceLight : AppColors.lightSurfaceSecondary),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
-                size: 36,
-                color: AppColors.primaryEmerald,
+                size: 28,
+                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
               ),
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.md),
             Text(
               title,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-              ),
+              style: AppTypography.headline(isDark),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               description,
-              style: TextStyle(
-                fontSize: 13,
-                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-              ),
+              style: AppTypography.bodyMedium(isDark),
               textAlign: TextAlign.center,
             ),
             if (actionLabel != null && onActionTap != null) ...[
-              const SizedBox(height: AppSpacing.xl),
-              ElevatedButton.icon(
-                onPressed: onActionTap,
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: Text(actionLabel!),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryEmerald,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.md),
-                  shape: const RoundedRectangleBorder(borderRadius: AppRadius.borderPill),
-                  elevation: 0,
+              const SizedBox(height: AppSpacing.lg),
+              SizedBox(
+                height: 44,
+                child: ElevatedButton.icon(
+                  onPressed: onActionTap,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: Text(actionLabel!),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 0),
+                    shape: RoundedRectangleBorder(borderRadius: AppRadius.borderSm),
+                    elevation: 0,
+                  ),
                 ),
               ),
             ],
