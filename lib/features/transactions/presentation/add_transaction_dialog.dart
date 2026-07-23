@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/glass/glass_button.dart';
+import '../../../core/widgets/glass/glass_card.dart';
+import '../../../core/widgets/glass/glass_chip.dart';
+import '../../../core/widgets/glass/glass_input.dart';
+import '../../categories/data/category_repository.dart';
+import '../../categories/domain/category_model.dart';
+import '../../categories/presentation/add_category_dialog.dart';
 import '../domain/transaction_model.dart';
 
-/// Low-overhead Modal Dialog to create a transaction.
-/// Ensures all controllers are disposed immediately upon closure.
+/// Commercial-grade Glassmorphic Modal Bottom Sheet for adding ledger transactions.
 class AddTransactionDialog extends StatefulWidget {
-  final ValueChanged<TransactionModel> onSubmit;
+  final Function(TransactionModel) onSubmit;
 
   const AddTransactionDialog({
     super.key,
@@ -20,19 +27,21 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
   late final TextEditingController _titleController;
   late final TextEditingController _amountController;
   late final TextEditingController _categoryController;
+
   TransactionType _selectedType = TransactionType.expense;
+  String _selectedCategory = 'Food & Dining';
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController();
     _amountController = TextEditingController();
-    _categoryController = TextEditingController(text: 'General');
+    _categoryController = TextEditingController(text: _selectedCategory);
+    CategoryRepository.instance.loadCategories();
   }
 
   @override
   void dispose() {
-    // Explicit disposal of all text controllers to prevent memory leaks on 1GB RAM hardware
     _titleController.dispose();
     _amountController.dispose();
     _categoryController.dispose();
@@ -45,6 +54,12 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
     final String category = _categoryController.text.trim();
 
     if (title.isEmpty || amount == null || amount <= 0 || category.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill out all required fields with a valid amount.'),
+          backgroundColor: AppColors.expenseRed,
+        ),
+      );
       return;
     }
 
@@ -60,135 +75,213 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
     Navigator.of(context).pop();
   }
 
+  void _openAddCustomCategory() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const AddCategoryDialog(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: AppTheme.cardBg,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        top: 24,
+        left: AppSpacing.lg,
+        right: AppSpacing.lg,
+      ),
+      child: GlassCard(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Add Transaction',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryEmerald.withValues(alpha: 0.2),
+                        borderRadius: AppRadius.borderXs,
+                      ),
+                      child: const Icon(Icons.add_card_rounded, color: AppColors.primaryEmerald, size: 18),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'New Ledger Transaction',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                      ),
+                    ),
+                  ],
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close, size: 20),
+                  icon: const Icon(Icons.close_rounded, size: 22),
                   onPressed: () => Navigator.of(context).pop(),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            // Expense / Income Selector
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedType = TransactionType.expense),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: _selectedType == TransactionType.expense
-                            ? AppTheme.expenseRed
-                            : AppTheme.background,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'Expense',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+            const SizedBox(height: AppSpacing.md),
+
+            // Segmented Glass Expense / Income Switcher
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0x351E293B) : const Color(0x60FFFFFF),
+                borderRadius: AppRadius.borderPill,
+                border: Border.all(
+                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedType = TransactionType.expense),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
                           color: _selectedType == TransactionType.expense
-                              ? Colors.white
-                              : AppTheme.textSecondary,
+                              ? AppColors.expenseRed
+                              : Colors.transparent,
+                          borderRadius: AppRadius.borderPill,
+                        ),
+                        child: Text(
+                          'Expense',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: _selectedType == TransactionType.expense
+                                ? Colors.white
+                                : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedType = TransactionType.income),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: _selectedType == TransactionType.income
-                            ? AppTheme.incomeGreen
-                            : AppTheme.background,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'Income',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedType = TransactionType.income),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
                           color: _selectedType == TransactionType.income
-                              ? Colors.white
-                              : AppTheme.textSecondary,
+                              ? AppColors.incomeGreen
+                              : Colors.transparent,
+                          borderRadius: AppRadius.borderPill,
+                        ),
+                        child: Text(
+                          'Income',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: _selectedType == TransactionType.income
+                                ? Colors.white
+                                : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                          ),
                         ),
                       ),
                     ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            // Hero Glass Amount Input
+            GlassInput(
+              controller: _amountController,
+              label: 'Transaction Amount',
+              hint: '0.00',
+              isCurrency: true,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // Title Glass Input
+            GlassInput(
+              controller: _titleController,
+              label: 'Title / Merchant',
+              hint: 'e.g. Starbucks, Apple Store, Salary',
+              prefixIcon: Icons.title_rounded,
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // Glass Category Selector
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'SELECT CATEGORY',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: _openAddCustomCategory,
+                  child: const Text(
+                    '+ Custom',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primaryEmerald),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                isDense: true,
-                border: OutlineInputBorder(),
-              ),
+            const SizedBox(height: AppSpacing.xs),
+            ValueListenableBuilder<List<CategoryModel>>(
+              valueListenable: CategoryRepository.instance.categoriesNotifier,
+              builder: (context, catModels, _) {
+                final catNames = catModels.map((c) => c.name).toList();
+                if (!catNames.contains('Food & Dining')) catNames.insert(0, 'Food & Dining');
+                if (!catNames.contains('Transportation')) catNames.add('Transportation');
+                if (!catNames.contains('Bills & Utilities')) catNames.add('Bills & Utilities');
+                if (!catNames.contains('Salary & Wages')) catNames.add('Salary & Wages');
+
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: catNames.map((cat) {
+                    final isSelected = _selectedCategory == cat;
+                    return GlassChip(
+                      label: cat,
+                      isSelected: isSelected,
+                      onTap: () {
+                        setState(() {
+                          _selectedCategory = cat;
+                          _categoryController.text = cat;
+                        });
+                      },
+                    );
+                  }).toList(),
+                );
+              },
             ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Amount (\$)',
-                isDense: true,
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _categoryController,
-              decoration: const InputDecoration(
-                labelText: 'Category',
-                isDense: true,
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
+            const SizedBox(height: AppSpacing.xl),
+
+            // Glass Save Action Button
+            GlassButton(
+              label: 'Save Transaction',
+              icon: Icons.check_circle_outline_rounded,
+              variant: GlassButtonVariant.gradient,
               onPressed: _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: const Text(
-                'Save Transaction',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
             ),
+            const SizedBox(height: AppSpacing.md),
           ],
         ),
       ),

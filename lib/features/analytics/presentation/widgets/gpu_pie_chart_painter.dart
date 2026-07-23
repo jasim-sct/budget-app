@@ -1,11 +1,12 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
+/// Smooth Donut Chart CustomPainter for Analytics Category Distribution.
 class GpuPieChartPainter extends CustomPainter {
   final List<double> values;
   final List<Color> colors;
 
-  GpuPieChartPainter({
+  const GpuPieChartPainter({
     required this.values,
     required this.colors,
   });
@@ -22,8 +23,8 @@ class GpuPieChartPainter extends CustomPainter {
 
     final Paint paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = radius * 0.4
-      ..isAntiAlias = false; // Fast rendering on low-end GPU
+      ..strokeWidth = radius * 0.38
+      ..strokeCap = StrokeCap.round;
 
     double startAngle = -pi / 2;
 
@@ -36,7 +37,7 @@ class GpuPieChartPainter extends CustomPainter {
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius * 0.8),
         startAngle,
-        sweepAngle - 0.03, // subtle gap
+        max(0.01, sweepAngle - 0.06),
         false,
         paint,
       );

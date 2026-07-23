@@ -4,7 +4,7 @@ import 'package:budget_lite/features/accounts/domain/models/account_model.dart';
 void main() {
   group('AccountModel Tests', () {
     test('AccountModel serialization and default values', () {
-      final account = AccountModel(
+      const account = AccountModel(
         id: 'acc_1',
         name: 'Main Checking',
         type: AccountType.bank,

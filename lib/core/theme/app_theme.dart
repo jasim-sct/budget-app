@@ -1,39 +1,112 @@
 import 'package:flutter/material.dart';
+import 'app_colors.dart';
+import 'app_spacing.dart';
 
-/// Ultra-lightweight Theme System optimized for low-end GPUs.
-/// Avoids Material 3 dynamic color generation runtime overhead.
-/// Uses flat ARGB colors to prevent offscreen render target allocations.
+/// Centralized Theme System supplying Light and Dark theme configurations.
 abstract class AppTheme {
-  // Pre-instantiated ARGB Color constants (no runtime instantiation)
-  static const Color primary = Color(0xFF107C41);
-  static const Color background = Color(0xFFF4F6F8);
-  static const Color cardBg = Color(0xFFFFFFFF);
-  static const Color textPrimary = Color(0xFF1F2937);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color incomeGreen = Color(0xFF059669);
-  static const Color expenseRed = Color(0xFFDC2626);
-  static const Color divider = Color(0xFFE5E7EB);
+  // Legacy & Compatibility Static Accessors
+  static const Color primary = AppColors.primaryEmerald;
+  static const Color background = AppColors.lightBackground;
+  static const Color cardBg = AppColors.lightCardBg;
+  static const Color textPrimary = AppColors.lightTextPrimary;
+  static const Color textSecondary = AppColors.lightTextSecondary;
+  static const Color incomeGreen = AppColors.incomeGreen;
+  static const Color expenseRed = AppColors.expenseRed;
+  static const Color divider = AppColors.lightBorder;
+
+  // Dark legacy static accessors
+  static const Color darkBg = AppColors.darkBackground;
+  static const Color darkCard = AppColors.darkCardBg;
+  static const Color darkTextPri = AppColors.darkTextPrimary;
+  static const Color darkTextSec = AppColors.darkTextSecondary;
+  static const Color darkBorderColor = AppColors.darkBorder;
 
   static ThemeData get lightTheme {
     return ThemeData(
-      useMaterial3: false, // Disables M3 ripple & elevation calculation overhead
-      scaffoldBackgroundColor: background,
-      primaryColor: primary,
-      splashFactory: NoSplash.splashFactory, // Removes CPU ripple animation frames
-      highlightColor: Colors.transparent,
-      dividerColor: divider,
-      fontFamily: null, // Uses default system font to save font asset RAM
+      useMaterial3: true,
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: AppColors.lightBackground,
+      primaryColor: AppColors.primaryEmerald,
+      colorScheme: const ColorScheme.light(
+        primary: AppColors.primaryEmerald,
+        secondary: AppColors.accentIndigo,
+        surface: AppColors.lightSurface,
+        onSurface: AppColors.lightTextPrimary,
+        error: AppColors.expenseRed,
+      ),
+      dividerColor: AppColors.lightBorder,
+      cardTheme: const CardThemeData(
+        color: AppColors.lightCardBg,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: AppRadius.borderMd,
+          side: BorderSide(color: AppColors.lightBorder, width: 1),
+        ),
+        margin: EdgeInsets.zero,
+      ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: cardBg,
-        foregroundColor: textPrimary,
+        backgroundColor: Colors.transparent,
+        foregroundColor: AppColors.lightTextPrimary,
         elevation: 0,
         centerTitle: false,
         scrolledUnderElevation: 0,
       ),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: AppColors.lightSurface,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderLg),
+        elevation: 12,
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.lightSurface,
+        modalBackgroundColor: AppColors.lightSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+        ),
+      ),
+    );
+  }
+
+  static ThemeData get darkTheme {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: AppColors.darkBackground,
+      primaryColor: AppColors.primaryEmerald,
+      colorScheme: const ColorScheme.dark(
+        primary: AppColors.primaryEmerald,
+        secondary: AppColors.accentViolet,
+        surface: AppColors.darkSurface,
+        onSurface: AppColors.darkTextPrimary,
+        error: AppColors.expenseRed,
+      ),
+      dividerColor: AppColors.darkBorder,
       cardTheme: const CardThemeData(
-        color: cardBg,
+        color: AppColors.darkCardBg,
         elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: AppRadius.borderMd,
+          side: BorderSide(color: AppColors.darkBorder, width: 1),
+        ),
         margin: EdgeInsets.zero,
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        foregroundColor: AppColors.darkTextPrimary,
+        elevation: 0,
+        centerTitle: false,
+        scrolledUnderElevation: 0,
+      ),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: AppColors.darkSurface,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderLg),
+        elevation: 12,
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.darkSurface,
+        modalBackgroundColor: AppColors.darkSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+        ),
       ),
     );
   }

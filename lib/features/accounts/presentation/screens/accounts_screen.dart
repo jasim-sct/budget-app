@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/glass/glass_bottom_sheet.dart';
+import '../../../../core/widgets/glass/glass_button.dart';
+import '../../../../core/widgets/glass/glass_card.dart';
+import '../../../../core/widgets/glass/glass_input.dart';
 import '../../application/accounts_controller.dart';
 import '../../domain/models/account_model.dart';
 
+/// VisionOS Frosted Glass Wallets & Accounts Screen.
 class AccountsScreen extends StatefulWidget {
   final AccountsController controller;
 
@@ -23,59 +31,95 @@ class _AccountsScreenState extends State<AccountsScreen> {
     widget.controller.loadAccounts();
   }
 
-  void _showAddAccountDialog() {
+  void _showAddAccountModal() {
     final nameController = TextEditingController();
     final balanceController = TextEditingController(text: '0.00');
     AccountType selectedType = AccountType.bank;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: AppTheme.cardBg,
-          title: const Text('Add Account / Wallet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Account Name', isDense: true),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomContext) {
+        final isDark = Theme.of(bottomContext).brightness == Brightness.dark;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return GlassBottomSheet(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Add Glass Wallet or Account',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  GlassInput(
+                    controller: nameController,
+                    label: 'ACCOUNT NAME',
+                    hint: 'e.g. Chase Bank, Cash Wallet',
+                    prefixIcon: Icons.account_balance_rounded,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  GlassInput(
+                    controller: balanceController,
+                    label: 'INITIAL BALANCE',
+                    hint: '0.00',
+                    isCurrency: true,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text('ACCOUNT TYPE', style: AppTypography.labelSmall(isDark)),
+                  const SizedBox(height: AppSpacing.xs),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: AccountType.values.map((type) {
+                      final isSelected = selectedType == type;
+                      return ChoiceChip(
+                        label: Text(type.name.toUpperCase()),
+                        selected: isSelected,
+                        selectedColor: AppColors.primaryEmerald,
+                        labelStyle: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: isSelected ? Colors.white : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
+                        ),
+                        onSelected: (_) => setModalState(() => selectedType = type),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  GlassButton(
+                    label: 'Save Glass Account',
+                    variant: GlassButtonVariant.gradient,
+                    onPressed: () {
+                      final name = nameController.text.trim();
+                      final balance = double.tryParse(balanceController.text.trim()) ?? 0.0;
+                      if (name.isNotEmpty) {
+                        final account = AccountModel(
+                          id: 'acc_${DateTime.now().millisecondsSinceEpoch}',
+                          name: name,
+                          type: selectedType,
+                          balance: balance,
+                          currency: 'USD',
+                          colorValue: 0xFF10B981,
+                          updatedAt: DateTime.now().millisecondsSinceEpoch,
+                        );
+                        widget.controller.saveAccount(account);
+                        Navigator.pop(bottomContext);
+                      }
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: balanceController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Initial Balance (\$)'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final name = nameController.text.trim();
-                final balance = double.tryParse(balanceController.text.trim()) ?? 0.0;
-                if (name.isNotEmpty) {
-                  final account = AccountModel(
-                    id: 'acc_${DateTime.now().millisecondsSinceEpoch}',
-                    name: name,
-                    type: selectedType,
-                    balance: balance,
-                    currency: 'USD',
-                    colorValue: 0xFF2563EB,
-                    updatedAt: DateTime.now().millisecondsSinceEpoch,
-                  );
-                  widget.controller.saveAccount(account);
-                  Navigator.pop(dialogContext);
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white),
-              child: const Text('Save'),
-            ),
-          ],
+            );
+          },
         );
       },
     ).then((_) {
@@ -86,9 +130,17 @@ class _AccountsScreenState extends State<AccountsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('Wallets & Accounts'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text(
+          'Wallets & Glass Accounts',
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+        ),
       ),
       body: ListenableBuilder(
         listenable: widget.controller.stateNotifier,
@@ -96,83 +148,128 @@ class _AccountsScreenState extends State<AccountsScreen> {
           final state = widget.controller.stateNotifier.value;
 
           if (state.isLoading && state.accounts.isEmpty) {
-            return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary));
+            return const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: AppColors.primaryEmerald,
+              ),
+            );
+          }
+
+          if (state.accounts.isEmpty) {
+            return EmptyStateWidget(
+              icon: Icons.account_balance_wallet_outlined,
+              title: 'No Glass Accounts Configured',
+              description: 'Add your bank accounts, credit cards, or cash wallets to calculate Net Worth.',
+              actionLabel: 'Add First Account',
+              onActionTap: _showAddAccountModal,
+            );
           }
 
           return Column(
             children: [
-              // Total Balance Header Card
-              Container(
-                width: double.infinity,
-                color: AppTheme.cardBg,
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'NET WORTH / TOTAL ASSETS',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      AppFormatters.currency(state.totalBalance),
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-                    ),
-                  ],
+              // Glass Net Worth Asset Banner Card
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: GlassCard(
+                  gradient: isDark ? AppColors.cardGradientDark : AppColors.cardGradientLight,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'TOTAL ASSETS / NET WORTH',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.0,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        AppFormatters.currency(state.totalBalance),
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Row(
+                        children: [
+                          const Icon(Icons.account_balance_outlined, color: AppColors.primaryEmerald, size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${state.accounts.length} Active Glass Accounts Connected',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFFCBD5E1)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const Divider(height: 1, color: AppTheme.divider),
-              // Account List
+
+              const Divider(height: 1, color: Colors.transparent),
+
+              // Account Glass List
               Expanded(
                 child: ListView.builder(
                   itemCount: state.accounts.length,
-                  itemExtent: 68.0,
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
                   itemBuilder: (context, index) {
                     final acc = state.accounts[index];
-                    return Container(
-                      height: 68.0,
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                      decoration: const BoxDecoration(
-                        color: AppTheme.cardBg,
-                        border: Border(bottom: BorderSide(color: AppTheme.divider, width: 0.5)),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: Color(acc.colorValue).withAlpha(30),
-                              borderRadius: BorderRadius.circular(6),
+                    final IconData icon = _getAccountIcon(acc.type);
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: GlassCard(
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: Color(acc.colorValue).withValues(alpha: 0.15),
+                                borderRadius: AppRadius.borderSm,
+                                border: Border.all(color: Color(acc.colorValue).withValues(alpha: 0.3), width: 1),
+                              ),
+                              child: Icon(icon, color: Color(acc.colorValue), size: 24),
                             ),
-                            child: Icon(
-                              _getAccountIcon(acc.type),
-                              color: Color(acc.colorValue),
-                              size: 20,
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    acc.name,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                                    ),
+                                  ),
+                                  Text(
+                                    acc.type.name.toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  acc.name,
-                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
-                                ),
-                                Text(
-                                  acc.type.name.toUpperCase(),
-                                  style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-                                ),
-                              ],
+                            Text(
+                              AppFormatters.currency(acc.balance),
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                              ),
                             ),
-                          ),
-                          Text(
-                            AppFormatters.currency(acc.balance),
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -182,12 +279,16 @@ class _AccountsScreenState extends State<AccountsScreen> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddAccountDialog,
-        backgroundColor: AppTheme.primary,
-        foregroundColor: Colors.white,
-        elevation: 2,
-        child: const Icon(Icons.add),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 75),
+        child: FloatingActionButton.extended(
+          onPressed: _showAddAccountModal,
+          backgroundColor: AppColors.primaryEmerald,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          icon: const Icon(Icons.add_rounded, size: 24),
+          label: const Text('Add Account', style: TextStyle(fontWeight: FontWeight.w800)),
+        ),
       ),
     );
   }

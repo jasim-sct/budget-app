@@ -1,6 +1,7 @@
-import 'package:flutter/foundation.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/services/financial_sync_service.dart';
 import '../../../core/state/micro_notifier.dart';
+import '../../../core/state/month_selector_controller.dart';
 import '../domain/transaction_model.dart';
 
 class TransactionState {
@@ -37,7 +38,7 @@ class TransactionState {
   }
 }
 
-/// Feature repository managing data pagination and micro-state.
+/// Feature repository managing data pagination, month-based filtering, and micro-state.
 class TransactionRepository {
   static const int pageSize = 50;
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
@@ -55,7 +56,12 @@ class TransactionRepository {
   int _currentOffset = 0;
   bool _isFetching = false;
 
-  /// Loads first page of transactions and summary totals.
+  TransactionRepository() {
+    MonthSelectorController.instance.addListener(loadInitialData);
+    FinancialSyncService.instance.addListener(loadInitialData);
+  }
+
+  /// Loads month-filtered transactions and summary totals based on global MonthSelectorController.
   Future<void> loadInitialData() async {
     if (_isFetching) return;
     _isFetching = true;
@@ -63,12 +69,15 @@ class TransactionRepository {
 
     stateNotifier.update(stateNotifier.value.copyWith(isLoading: true));
 
-    final rawTxList = await _dbHelper.getTransactionsPaginated(
+    final date = MonthSelectorController.instance.value;
+    final rawTxList = await _dbHelper.getTransactionsByMonth(
+      year: date.year,
+      month: date.month,
       limit: pageSize,
       offset: 0,
     );
 
-    final totals = await _dbHelper.getSummaryTotals();
+    final totals = await _dbHelper.getSummaryTotalsByMonth(date.year, date.month);
 
     final txModels = rawTxList.map((map) => TransactionModel.fromMap(map)).toList();
 
@@ -92,7 +101,10 @@ class TransactionRepository {
     if (_isFetching || !stateNotifier.value.hasMore) return;
     _isFetching = true;
 
-    final rawTxList = await _dbHelper.getTransactionsPaginated(
+    final date = MonthSelectorController.instance.value;
+    final rawTxList = await _dbHelper.getTransactionsByMonth(
+      year: date.year,
+      month: date.month,
       limit: pageSize,
       offset: _currentOffset,
     );
@@ -114,21 +126,24 @@ class TransactionRepository {
     _isFetching = false;
   }
 
-  /// Add new transaction with indexed SQL insert
+  /// Add new transaction with indexed SQL insert and broadcast inter-module sync
   Future<void> addTransaction(TransactionModel transaction) async {
     await _dbHelper.insertTransaction(transaction.toMap());
     await loadInitialData();
+    FinancialSyncService.instance.notifyMutation();
   }
 
   /// Delete transaction
   Future<void> deleteTransaction(int id) async {
     await _dbHelper.deleteTransaction(id);
     await loadInitialData();
+    FinancialSyncService.instance.notifyMutation();
   }
 
   /// Clear all
   Future<void> clearAll() async {
     await _dbHelper.clearAllData();
     await loadInitialData();
+    FinancialSyncService.instance.notifyMutation();
   }
 }

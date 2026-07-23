@@ -1,5 +1,15 @@
 /// Fast, lightweight formatting utilities without third-party `intl` package heap overhead.
 abstract class AppFormatters {
+  static const List<String> monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  static const List<String> shortMonthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+
   static String currency(double amount, {String symbol = '\$'}) {
     final bool isNegative = amount < 0;
     final double absAmount = amount.abs();
@@ -36,8 +46,26 @@ abstract class AppFormatters {
   }
 
   static String dateShort(DateTime dt) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    final monthName = months[dt.month - 1];
+    final monthName = shortMonthNames[dt.month - 1];
     return '$monthName ${dt.day}, ${dt.year}';
+  }
+
+  static String dateShortFromMs(int ms) {
+    return dateShort(DateTime.fromMillisecondsSinceEpoch(ms));
+  }
+
+  static String monthName(int month) {
+    if (month >= 1 && month <= 12) {
+      return monthNames[month - 1];
+    }
+    return '';
+  }
+
+  static String monthYear(DateTime dt) {
+    return '${monthNames[dt.month - 1]} ${dt.year}';
+  }
+
+  static String shortMonthYear(DateTime dt) {
+    return '${shortMonthNames[dt.month - 1]} ${dt.year}';
   }
 }

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../../core/database/app_database.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_typography.dart';
+import '../../../../core/widgets/app_card.dart';
 
 class DeveloperSettingsScreen extends StatefulWidget {
   const DeveloperSettingsScreen({super.key});
@@ -26,93 +29,82 @@ class _DeveloperSettingsScreenState extends State<DeveloperSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Developer & Performance Tools'),
+        title: const Text('Developer & Hardware Diagnostics'),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          const Text(
+          Text(
             'PERFORMANCE METRICS & HARDWARE MONITOR',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary, letterSpacing: 0.5),
+            style: AppTypography.labelSmall(isDark),
           ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppTheme.cardBg,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppTheme.divider, width: 0.5),
-            ),
-            child: const Column(
+          const SizedBox(height: AppSpacing.sm),
+          AppCard(
+            child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Target Frame Rate:', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
-                    Text('60 FPS (16.6ms)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.incomeGreen)),
-                  ],
-                ),
-                SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Target RAM Heap Limit:', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
-                    Text('< 25 MB', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.primary)),
-                  ],
-                ),
-                SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Minimum Android Target:', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
-                    Text('API 26 (Android 8.0+)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-                  ],
-                ),
+                _buildMetricRow('Target Frame Rate', '60 FPS (16.6ms)', AppColors.incomeGreen, isDark),
+                const SizedBox(height: 6),
+                _buildMetricRow('Target RAM Heap Limit', '< 25 MB', AppColors.primaryEmerald, isDark),
+                const SizedBox(height: 6),
+                _buildMetricRow('Minimum Target OS', 'Android 8.0+ / Linux', isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary, isDark),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          const Text(
+          const SizedBox(height: AppSpacing.xl),
+          Text(
             'FEATURE FLAGS & TUNING',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary, letterSpacing: 0.5),
+            style: AppTypography.labelSmall(isDark),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           SwitchListTile(
-            title: const Text('Aggressive Background Memory Purge', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-            subtitle: const Text('Releases image memory allocations immediately on pause', style: TextStyle(fontSize: 12)),
+            title: Text('Aggressive Background Memory Purge', style: AppTypography.titleMedium(isDark)),
+            subtitle: Text('Releases image memory allocations immediately on pause', style: AppTypography.bodyMedium(isDark)),
             value: _enableStrictMemoryTrimming,
-            activeColor: AppTheme.primary,
+            activeTrackColor: AppColors.primaryEmerald,
             onChanged: (v) => setState(() => _enableStrictMemoryTrimming = v),
           ),
           SwitchListTile(
-            title: const Text('Fixed ListExtent Rendering', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-            subtitle: const Text('Bypasses layout measurement passes for lists', style: TextStyle(fontSize: 12)),
+            title: Text('Fixed ListExtent Rendering', style: AppTypography.titleMedium(isDark)),
+            subtitle: Text('Bypasses layout measurement passes for lists', style: AppTypography.bodyMedium(isDark)),
             value: _enableHighFpsMode,
-            activeColor: AppTheme.primary,
+            activeTrackColor: AppColors.primaryEmerald,
             onChanged: (v) => setState(() => _enableHighFpsMode = v),
           ),
           SwitchListTile(
-            title: const Text('SQL Query Diagnostics', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-            subtitle: const Text('Log indexed query execution times', style: TextStyle(fontSize: 12)),
+            title: Text('SQL Query Diagnostics', style: AppTypography.titleMedium(isDark)),
+            subtitle: Text('Log indexed query execution times', style: AppTypography.bodyMedium(isDark)),
             value: _enableSqlLogging,
-            activeColor: AppTheme.primary,
+            activeTrackColor: AppColors.primaryEmerald,
             onChanged: (v) => setState(() => _enableSqlLogging = v),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.xl),
           ElevatedButton.icon(
             onPressed: _vacuumDb,
             icon: const Icon(Icons.compress_rounded),
             label: const Text('Compact SQLite Storage (VACUUM)'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
+              backgroundColor: AppColors.primaryEmerald,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+              shape: const RoundedRectangleBorder(borderRadius: AppRadius.borderMd),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMetricRow(String label, String value, Color valueColor, bool isDark) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: AppTypography.bodyMedium(isDark)),
+        Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: valueColor)),
+      ],
     );
   }
 }
