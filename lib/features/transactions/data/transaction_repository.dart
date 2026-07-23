@@ -41,7 +41,7 @@ class TransactionState {
   }
 }
 
-/// Feature repository managing data pagination, enterprise global filtering, and micro-state.
+/// Feature repository managing data pagination, global filtering, and micro-state.
 class TransactionRepository {
   static const int pageSize = 50;
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
@@ -62,48 +62,52 @@ class TransactionRepository {
   TransactionRepository() {
     MonthSelectorController.instance.addListener(loadInitialData);
     FinancialSyncService.instance.addListener(loadInitialData);
-    GlobalFilterController.instance.filterNotifier.addListener(loadInitialData);
   }
 
   /// Loads filtered transactions and summary totals based on GlobalFilterController and active Month.
   Future<void> loadInitialData() async {
+    if (_isFetching) return;
     _isFetching = true;
     _currentOffset = 0;
 
     stateNotifier.update(stateNotifier.value.copyWith(isLoading: true));
 
-    final date = MonthSelectorController.instance.value;
-    final filter = GlobalFilterController.instance.state;
+    try {
+      final date = MonthSelectorController.instance.value;
+      final filter = GlobalFilterController.instance.state;
 
-    final rawTxList = await _dbHelper.getFilteredTransactions(
-      filter,
-      limit: pageSize,
-      offset: 0,
-      activeYear: date.year,
-      activeMonth: date.month,
-    );
+      final rawTxList = await _dbHelper.getFilteredTransactions(
+        filter,
+        limit: pageSize,
+        offset: 0,
+        activeYear: date.year,
+        activeMonth: date.month,
+      );
 
-    final totals = await _dbHelper.getFilteredSummaryTotals(
-      filter,
-      activeYear: date.year,
-      activeMonth: date.month,
-    );
+      final totals = await _dbHelper.getFilteredSummaryTotals(
+        filter,
+        activeYear: date.year,
+        activeMonth: date.month,
+      );
 
-    final txModels = rawTxList.map((map) => TransactionModel.fromMap(map)).toList();
+      final txModels = rawTxList.map((map) => TransactionModel.fromMap(map)).toList();
 
-    _currentOffset = txModels.length;
+      _currentOffset = txModels.length;
 
-    stateNotifier.update(
-      TransactionState(
-        transactions: txModels,
-        totalIncome: totals['income'] ?? 0.0,
-        totalExpense: totals['expense'] ?? 0.0,
-        isLoading: false,
-        hasMore: txModels.length == pageSize,
-      ),
-    );
-
-    _isFetching = false;
+      stateNotifier.update(
+        TransactionState(
+          transactions: txModels,
+          totalIncome: totals['income'] ?? 0.0,
+          totalExpense: totals['expense'] ?? 0.0,
+          isLoading: false,
+          hasMore: txModels.length == pageSize,
+        ),
+      );
+    } catch (e) {
+      stateNotifier.update(stateNotifier.value.copyWith(isLoading: false, hasMore: false));
+    } finally {
+      _isFetching = false;
+    }
   }
 
   /// Appends next page of filtered transactions on scroll
@@ -111,46 +115,48 @@ class TransactionRepository {
     if (_isFetching || !stateNotifier.value.hasMore) return;
     _isFetching = true;
 
-    final date = MonthSelectorController.instance.value;
-    final filter = GlobalFilterController.instance.state;
+    try {
+      final date = MonthSelectorController.instance.value;
+      final filter = GlobalFilterController.instance.state;
 
-    final rawTxList = await _dbHelper.getFilteredTransactions(
-      filter,
-      limit: pageSize,
-      offset: _currentOffset,
-      activeYear: date.year,
-      activeMonth: date.month,
-    );
+      final rawTxList = await _dbHelper.getFilteredTransactions(
+        filter,
+        limit: pageSize,
+        offset: _currentOffset,
+        activeYear: date.year,
+        activeMonth: date.month,
+      );
 
-    final newTxModels = rawTxList.map((map) => TransactionModel.fromMap(map)).toList();
+      final newTxModels = rawTxList.map((map) => TransactionModel.fromMap(map)).toList();
 
-    _currentOffset += newTxModels.length;
+      _currentOffset += newTxModels.length;
 
-    final updatedList = List<TransactionModel>.from(stateNotifier.value.transactions)
-      ..addAll(newTxModels);
+      final updatedList = List<TransactionModel>.from(stateNotifier.value.transactions)
+        ..addAll(newTxModels);
 
-    stateNotifier.update(
-      stateNotifier.value.copyWith(
-        transactions: updatedList,
-        hasMore: newTxModels.length == pageSize,
-      ),
-    );
-
-    _isFetching = false;
+      stateNotifier.update(
+        stateNotifier.value.copyWith(
+          transactions: updatedList,
+          hasMore: newTxModels.length == pageSize,
+        ),
+      );
+    } catch (e) {
+      stateNotifier.update(stateNotifier.value.copyWith(hasMore: false));
+    } finally {
+      _isFetching = false;
+    }
   }
 
   /// Add new transaction with indexed SQL insert and broadcast inter-module sync
   Future<void> addTransaction(TransactionModel transaction) async {
     await _dbHelper.insertTransaction(transaction.toMap());
     await loadInitialData();
-    FinancialSyncService.instance.notifyMutation();
   }
 
   /// Delete transaction
   Future<void> deleteTransaction(int id) async {
     await _dbHelper.deleteTransaction(id);
     await loadInitialData();
-    FinancialSyncService.instance.notifyMutation();
   }
 
   /// Clear all stored application data across all database tables
@@ -158,7 +164,5 @@ class TransactionRepository {
     await _dbHelper.clearAllData();
     await AppDatabase.instance.clearAllData();
     await loadInitialData();
-    FinancialSyncService.instance.notifyMutation();
-    await FinancialCalculationEngine.instance.recalculate();
   }
 }

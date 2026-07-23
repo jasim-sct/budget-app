@@ -40,11 +40,15 @@ class AccountsController {
 
   Future<void> loadAccounts() async {
     stateNotifier.update(stateNotifier.value.copyWith(isLoading: true));
-    final list = await _repository.getAllAccounts();
-    final total = await _repository.getTotalBalance();
-    stateNotifier.update(
-      AccountsState(accounts: list, totalBalance: total, isLoading: false),
-    );
+    try {
+      final list = await _repository.getAllAccounts();
+      final total = await _repository.getTotalBalance();
+      stateNotifier.update(
+        AccountsState(accounts: list, totalBalance: total, isLoading: false),
+      );
+    } catch (_) {
+      stateNotifier.update(stateNotifier.value.copyWith(isLoading: false));
+    }
   }
 
   Future<void> saveAccount(AccountModel account) async {

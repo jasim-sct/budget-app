@@ -58,7 +58,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.position.pixels;
 
-    if (currentScroll >= (maxScroll * 0.8)) {
+    if (maxScroll > 0 && currentScroll >= (maxScroll * 0.85)) {
       widget.repository.loadMore();
     }
   }
@@ -144,7 +144,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
                 return ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 80),
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
                   itemCount: displayList.length + (state.hasMore ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == displayList.length) {
@@ -189,14 +189,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           ),
         ],
       ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-        child: FloatingActionButton.extended(
-          heroTag: 'fab_transactions_screen',
-          onPressed: _openAddTransactionModal,
-          icon: const Icon(Icons.add_rounded, size: 20),
-          label: const Text('Add Entry'),
-        ),
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_transactions_screen',
+        onPressed: _openAddTransactionModal,
+        icon: const Icon(Icons.add_rounded, size: 20),
+        label: const Text('Add Entry'),
       ),
     );
   }

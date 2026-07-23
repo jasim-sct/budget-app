@@ -4,6 +4,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/empty_state_widget.dart';
 import '../data/goal_repository.dart';
 import '../domain/goal_model.dart';
 import 'add_goal_dialog.dart';
@@ -17,10 +18,23 @@ class GoalsScreen extends StatefulWidget {
 }
 
 class _GoalsScreenState extends State<GoalsScreen> {
+  bool _isLoading = true;
+
   @override
   void initState() {
     super.initState();
-    GoalRepository.instance.loadGoals();
+    _fetchGoals();
+  }
+
+  Future<void> _fetchGoals() async {
+    setState(() => _isLoading = true);
+    try {
+      await GoalRepository.instance.loadGoals();
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _openAddGoal() {
@@ -29,7 +43,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const AddGoalDialog(),
-    );
+    ).then((_) => _fetchGoals());
   }
 
   @override
@@ -49,9 +63,22 @@ class _GoalsScreenState extends State<GoalsScreen> {
       body: ValueListenableBuilder<List<GoalModel>>(
         valueListenable: GoalRepository.instance.goalsNotifier,
         builder: (context, goals, _) {
-          if (goals.isEmpty) {
+          if (_isLoading && goals.isEmpty) {
             return const Center(
-              child: CircularProgressIndicator(strokeWidth: 2.0),
+              child: CircularProgressIndicator(
+                strokeWidth: 2.0,
+                color: AppColors.primaryBlue,
+              ),
+            );
+          }
+
+          if (goals.isEmpty) {
+            return EmptyStateWidget(
+              icon: Icons.flag_outlined,
+              title: 'No Savings Goals Set',
+              description: 'Create target savings goals to track your progress toward financial milestones.',
+              actionLabel: 'Create First Goal',
+              onActionTap: _openAddGoal,
             );
           }
 
@@ -64,7 +91,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                 child: _buildGoalCard(g, isDark),
               )),
-              const SizedBox(height: 80),
+              const SizedBox(height: AppSpacing.sm),
             ],
           );
         },

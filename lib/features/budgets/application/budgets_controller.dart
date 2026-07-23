@@ -26,8 +26,12 @@ class BudgetsController {
 
   Future<void> loadBudgets() async {
     stateNotifier.update(BudgetsState(summaries: stateNotifier.value.summaries, isLoading: true));
-    final list = await _dao.getBudgetsWithSpent();
-    stateNotifier.update(BudgetsState(summaries: list, isLoading: false));
+    try {
+      final list = await _dao.getBudgetsWithSpent();
+      stateNotifier.update(BudgetsState(summaries: list, isLoading: false));
+    } catch (_) {
+      stateNotifier.update(BudgetsState(summaries: stateNotifier.value.summaries, isLoading: false));
+    }
   }
 
   Future<void> saveBudget(BudgetModel budget) async {

@@ -33,21 +33,29 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   Future<void> _fetchCategoriesAndBudgets() async {
     setState(() => _isLoading = true);
-    await CategoryRepository.instance.loadCategories();
-    
-    final dao = BudgetDao(AppDatabase.instance);
-    final budgets = await dao.getBudgetsWithSpent();
-    final Map<String, double> limits = {};
-    for (final b in budgets) {
-      limits[b.budget.name.trim().toLowerCase()] = b.budget.amountLimit;
-      limits[b.budget.categoryId.trim().toLowerCase()] = b.budget.amountLimit;
-    }
+    try {
+      await CategoryRepository.instance.loadCategories();
+      
+      final dao = BudgetDao(AppDatabase.instance);
+      final budgets = await dao.getBudgetsWithSpent();
+      final Map<String, double> limits = {};
+      for (final b in budgets) {
+        limits[b.budget.name.trim().toLowerCase()] = b.budget.amountLimit;
+        limits[b.budget.categoryId.trim().toLowerCase()] = b.budget.amountLimit;
+      }
 
-    if (mounted) {
-      setState(() {
-        _budgetLimits = limits;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _budgetLimits = limits;
+        });
+      }
+    } catch (_) {
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

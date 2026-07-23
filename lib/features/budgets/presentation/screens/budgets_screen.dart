@@ -119,19 +119,16 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                     child: BudgetEnvelopeCard(summary: summary),
                   );
                 }),
-              const SizedBox(height: 80),
+              const SizedBox(height: AppSpacing.xs),
             ],
           );
         },
       ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-        child: FloatingActionButton.extended(
-          heroTag: 'fab_budgets_screen',
-          onPressed: _showAddBudgetModal,
-          icon: const Icon(Icons.add_rounded, size: 20),
-          label: const Text('Add Limit'),
-        ),
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_budgets_screen',
+        onPressed: _showAddBudgetModal,
+        icon: const Icon(Icons.add_rounded, size: 20),
+        label: const Text('Add Limit'),
       ),
     );
   }

@@ -277,7 +277,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   Expanded(
                     child: ListView.builder(
                       itemCount: state.accounts.length,
-                      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 80),
+                      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
                       itemBuilder: (context, index) {
                         final acc = state.accounts[index];
                         final IconData icon = _getAccountIcon(acc.type);
@@ -373,26 +373,23 @@ class _AccountsScreenState extends State<AccountsScreen> {
           );
         },
       ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            FloatingActionButton.extended(
-              heroTag: 'fab_add_ledger',
-              onPressed: () => _showAddLedgerModal(),
-              icon: const Icon(Icons.add_card_rounded, size: 20),
-              label: const Text('Add Ledger'),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            FloatingActionButton(
-              heroTag: 'fab_add_wallet',
-              onPressed: _showAddAccountModal,
-              tooltip: 'Add Wallet Account',
-              child: const Icon(Icons.account_balance_wallet_rounded, size: 20),
-            ),
-          ],
-        ),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'fab_add_ledger',
+            onPressed: () => _showAddLedgerModal(),
+            icon: const Icon(Icons.add_card_rounded, size: 20),
+            label: const Text('Add Ledger'),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          FloatingActionButton(
+            heroTag: 'fab_add_wallet',
+            onPressed: _showAddAccountModal,
+            tooltip: 'Add Wallet Account',
+            child: const Icon(Icons.account_balance_wallet_rounded, size: 20),
+          ),
+        ],
       ),
     );
   }
