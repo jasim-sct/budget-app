@@ -57,6 +57,21 @@ abstract class AppFormatters {
     return dateShort(DateTime.fromMillisecondsSinceEpoch(ms));
   }
 
+  static String timeFormat(DateTime dt) {
+    final int hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final String minute = dt.minute.toString().padLeft(2, '0');
+    final String period = dt.hour >= 12 ? 'PM' : 'AM';
+    return '${hour.toString().padLeft(2, '0')}:$minute $period';
+  }
+
+  static String dateTimeShort(DateTime dt) {
+    return '${dateShort(dt)} • ${timeFormat(dt)}';
+  }
+
+  static String dateTimeShortFromMs(int ms) {
+    return dateTimeShort(DateTime.fromMillisecondsSinceEpoch(ms));
+  }
+
   static String monthName(int month) {
     if (month >= 1 && month <= 12) {
       return monthNames[month - 1];

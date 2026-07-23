@@ -17,7 +17,7 @@ class WalkthroughStoryController extends ChangeNotifier {
   static final WalkthroughStoryController instance = WalkthroughStoryController._();
   WalkthroughStoryController._();
 
-  bool _isStoryActive = true;
+  bool _isStoryActive = false;
   StoryChapter _currentChapter = StoryChapter.welcome;
 
   bool get isStoryActive => _isStoryActive;

@@ -9,6 +9,7 @@ import '../../reports/presentation/reports_screen.dart';
 import '../data/transaction_repository.dart';
 import '../domain/transaction_model.dart';
 import 'add_transaction_dialog.dart';
+import 'transaction_detail_modal.dart';
 import 'widgets/transaction_item_tile.dart';
 
 /// Master Financial Ledger Screen.
@@ -163,6 +164,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                       padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                       child: TransactionItemTile(
                         transaction: tx,
+                        onTap: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => TransactionDetailModal(
+                              transaction: tx,
+                              onUpdateRequested: () => widget.repository.loadInitialData(),
+                            ),
+                          );
+                        },
                         onDelete: () {
                           if (tx.id != null) {
                             widget.repository.deleteTransaction(tx.id!);

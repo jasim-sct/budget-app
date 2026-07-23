@@ -17,6 +17,7 @@ import '../../../transactions/domain/transaction_model.dart';
 import '../../../transactions/presentation/add_transaction_dialog.dart';
 import '../../application/accounts_controller.dart';
 import '../../domain/models/account_model.dart';
+import '../modals/account_detail_modal.dart';
 
 /// Commercial-Grade Wallets & Accounts Screen.
 class AccountsScreen extends StatefulWidget {
@@ -284,6 +285,14 @@ class _AccountsScreenState extends State<AccountsScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                           child: AppCard(
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (_) => AccountDetailModal(account: acc),
+                              );
+                            },
                             child: Row(
                               children: [
                                 Container(

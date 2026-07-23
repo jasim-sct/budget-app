@@ -70,6 +70,19 @@ class DatabaseHelper {
         try {
           await db.execute('CREATE TABLE IF NOT EXISTS user_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);');
         } catch (_) {}
+        try {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS audit_logs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              entity_type TEXT NOT NULL,
+              entity_id TEXT NOT NULL,
+              action TEXT NOT NULL,
+              old_value TEXT,
+              new_value TEXT,
+              timestamp INTEGER NOT NULL
+            );
+          ''');
+        } catch (_) {}
       },
     );
   }
@@ -440,6 +453,38 @@ class DatabaseHelper {
     await batch.commit(noResult: true);
   }
 
+  // --- AUDIT LOGGING ENGINE ---
+
+  Future<void> logAudit(
+    String entityType,
+    String entityId,
+    String action, {
+    String? oldValue,
+    String? newValue,
+  }) async {
+    try {
+      final db = await database;
+      await db.insert('audit_logs', {
+        'entity_type': entityType,
+        'entity_id': entityId,
+        'action': action,
+        'old_value': oldValue,
+        'new_value': newValue,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      });
+    } catch (_) {}
+  }
+
+  Future<List<Map<String, dynamic>>> getAuditLogs(String entityType, String entityId) async {
+    final db = await database;
+    return await db.query(
+      'audit_logs',
+      where: 'entity_type = ? AND entity_id = ?',
+      whereArgs: [entityType, entityId],
+      orderBy: 'timestamp DESC',
+    );
+  }
+
   // --- MASTER LEDGER CRUD & ENTERPRISE FILTERED AGGREGATIONS ---
 
   Future<int> insertTransaction(Map<String, dynamic> row) async {
@@ -469,8 +514,93 @@ class DatabaseHelper {
       [delta, accountId],
     );
 
+    await logAudit(
+      'transaction',
+      '$id',
+      'created',
+      newValue: '${map['title']} • ${type == 1 ? "+" : "-"}\$${amount.toStringAsFixed(2)} (${map['category']})',
+    );
+
     FinancialSyncService.instance.notifyMutation();
     return id;
+  }
+
+  Future<int> updateTransaction(Map<String, dynamic> row) async {
+    final db = await database;
+    final id = row['id'] as int;
+
+    final oldRows = await db.query('transactions', where: 'id = ?', whereArgs: [id], limit: 1);
+    if (oldRows.isEmpty) return 0;
+    final oldRow = oldRows.first;
+
+    final oldAccountId = oldRow['account_id'] as String? ?? 'acc_cash';
+    final oldAmount = (oldRow['amount'] as num?)?.toDouble() ?? 0.0;
+    final oldType = oldRow['type'] as int? ?? 0;
+    final double oldDelta = (oldType == 1) ? oldAmount : -oldAmount;
+
+    // Revert old transaction effect
+    await db.rawUpdate('UPDATE accounts SET balance = balance - ? WHERE id = ?', [oldDelta, oldAccountId]);
+
+    final int dateMs = (row['date'] as int?) ?? (oldRow['date'] as int? ?? DateTime.now().millisecondsSinceEpoch);
+    final dt = DateTime.fromMillisecondsSinceEpoch(dateMs);
+    final map = Map<String, dynamic>.from(row);
+    map['date'] = dateMs;
+    map['month'] = dt.month;
+    map['year'] = dt.year;
+
+    final newAccountId = map['account_id'] as String? ?? 'acc_cash';
+    final newAmount = (map['amount'] as num?)?.toDouble() ?? 0.0;
+    final newType = map['type'] as int? ?? 0;
+    final double newDelta = (newType == 1) ? newAmount : -newAmount;
+
+    // Apply new transaction effect
+    await db.rawUpdate('UPDATE accounts SET balance = balance + ? WHERE id = ?', [newDelta, newAccountId]);
+
+    final count = await db.update('transactions', map, where: 'id = ?', whereArgs: [id]);
+
+    final String oldSummary = '${oldRow['title']} • ${oldType == 1 ? "+" : "-"}\$${oldAmount.toStringAsFixed(2)} (${oldRow['category']})';
+    final String newSummary = '${map['title']} • ${newType == 1 ? "+" : "-"}\$${newAmount.toStringAsFixed(2)} (${map['category']})';
+
+    await logAudit('transaction', '$id', 'updated', oldValue: oldSummary, newValue: newSummary);
+
+    FinancialSyncService.instance.notifyMutation();
+    return count;
+  }
+
+  Future<Map<String, dynamic>> getAccountAnalytics(String accountId) async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT 
+        SUM(CASE WHEN type = 1 THEN amount ELSE 0 END) AS total_income,
+        SUM(CASE WHEN type = 0 THEN amount ELSE 0 END) AS total_expense,
+        COUNT(*) AS tx_count
+      FROM transactions
+      WHERE account_id = ?
+    ''', [accountId]);
+
+    if (result.isNotEmpty) {
+      final row = result.first;
+      final income = (row['total_income'] as num?)?.toDouble() ?? 0.0;
+      final expense = (row['total_expense'] as num?)?.toDouble() ?? 0.0;
+      final count = (row['tx_count'] as num?)?.toInt() ?? 0;
+      return {
+        'income': income,
+        'expense': expense,
+        'net': income - expense,
+        'count': count,
+      };
+    }
+    return {'income': 0.0, 'expense': 0.0, 'net': 0.0, 'count': 0};
+  }
+
+  Future<List<Map<String, dynamic>>> getTransactionsForAccount(String accountId) async {
+    final db = await database;
+    return await db.query(
+      'transactions',
+      where: 'account_id = ?',
+      whereArgs: [accountId],
+      orderBy: 'date DESC',
+    );
   }
 
   Future<List<Map<String, dynamic>>> getFilteredTransactions(

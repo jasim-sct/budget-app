@@ -5,15 +5,17 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../domain/transaction_model.dart';
 
-/// Professional transaction list tile with swipe-to-delete.
+/// Professional transaction list tile with formatted date/time, click-to-view detail modal, and swipe-to-delete.
 class TransactionItemTile extends StatelessWidget {
   final TransactionModel transaction;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
+  final VoidCallback? onTap;
 
   const TransactionItemTile({
     super.key,
     required this.transaction,
-    required this.onDelete,
+    this.onDelete,
+    this.onTap,
   });
 
   @override
@@ -27,8 +29,8 @@ class TransactionItemTile extends StatelessWidget {
 
     return Dismissible(
       key: ValueKey('tx_${transaction.id ?? ''}_${transaction.dateMilliseconds}_${transaction.title}'),
-      direction: DismissDirection.endToStart,
-      onDismissed: (_) => onDelete(),
+      direction: onDelete != null ? DismissDirection.endToStart : DismissDirection.none,
+      onDismissed: onDelete != null ? (_) => onDelete!() : null,
       background: Container(
         margin: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
         decoration: BoxDecoration(
@@ -41,96 +43,100 @@ class TransactionItemTile extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
-        child: Container(
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.darkCardBg : AppColors.lightCardBg,
-            borderRadius: AppRadius.borderSm,
-            border: Border.all(
-              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-              width: 1.0,
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-          child: Row(
-            children: [
-              // Icon Badge
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: isIncome
-                      ? AppColors.incomeGreen.withValues(alpha: 0.12)
-                      : (isDark ? AppColors.darkSurfaceLight : AppColors.lightSurfaceSecondary),
-                  borderRadius: AppRadius.borderSm,
-                ),
-                child: Icon(
-                  categoryIcon,
-                  color: isIncome ? AppColors.incomeGreen : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-                  size: 20,
-                ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: AppRadius.borderSm,
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkCardBg : AppColors.lightCardBg,
+              borderRadius: AppRadius.borderSm,
+              border: Border.all(
+                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                width: 1.0,
               ),
-              const SizedBox(width: AppSpacing.sm),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            child: Row(
+              children: [
+                // Icon Badge
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: isIncome
+                        ? AppColors.incomeGreen.withValues(alpha: 0.12)
+                        : (isDark ? AppColors.darkSurfaceLight : AppColors.lightSurfaceSecondary),
+                    borderRadius: AppRadius.borderSm,
+                  ),
+                  child: Icon(
+                    categoryIcon,
+                    color: isIncome ? AppColors.incomeGreen : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
 
-              // Title & Category
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      transaction.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.titleMedium(isDark),
-                    ),
-                    const SizedBox(height: AppSpacing.xxs),
-                    Row(
-                      children: [
-                        Text(
-                          transaction.category,
-                          style: AppTypography.labelSmall(isDark),
-                        ),
-                        if (transaction.accountName != null && transaction.accountName!.isNotEmpty) ...[
+                // Title & Category
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        transaction.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.titleMedium(isDark),
+                      ),
+                      const SizedBox(height: AppSpacing.xxs),
+                      Row(
+                        children: [
                           Text(
-                            ' • ',
+                            transaction.category,
                             style: AppTypography.labelSmall(isDark),
                           ),
-                          Text(
-                            transaction.accountName!,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.primaryBlue,
+                          if (transaction.accountName != null && transaction.accountName!.isNotEmpty) ...[
+                            Text(
+                              ' • ',
+                              style: AppTypography.labelSmall(isDark),
                             ),
-                          ),
+                            Text(
+                              transaction.accountName!,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.primaryBlue,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Amount & Formatted Date & Time
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '$sign${AppFormatters.currency(transaction.amount)}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: amountColor,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xxs),
+                    Text(
+                      AppFormatters.dateTimeShortFromMs(transaction.dateMilliseconds),
+                      style: AppTypography.labelSmall(isDark).copyWith(fontSize: 10),
                     ),
                   ],
                 ),
-              ),
-
-              // Amount & Date
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '$sign${AppFormatters.currency(transaction.amount)}',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: amountColor,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xxs),
-                  Text(
-                    AppFormatters.dateShortFromMs(transaction.dateMilliseconds),
-                    style: AppTypography.labelSmall(isDark),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
