@@ -1,0 +1,134 @@
+import 'package:flutter/foundation.dart';
+import '../../../core/database/database_helper.dart';
+import '../../../core/state/micro_notifier.dart';
+import '../domain/transaction_model.dart';
+
+class TransactionState {
+  final List<TransactionModel> transactions;
+  final double totalIncome;
+  final double totalExpense;
+  final bool isLoading;
+  final bool hasMore;
+
+  const TransactionState({
+    required this.transactions,
+    required this.totalIncome,
+    required this.totalExpense,
+    required this.isLoading,
+    required this.hasMore,
+  });
+
+  double get balance => totalIncome - totalExpense;
+
+  TransactionState copyWith({
+    List<TransactionModel>? transactions,
+    double? totalIncome,
+    double? totalExpense,
+    bool? isLoading,
+    bool? hasMore,
+  }) {
+    return TransactionState(
+      transactions: transactions ?? this.transactions,
+      totalIncome: totalIncome ?? this.totalIncome,
+      totalExpense: totalExpense ?? this.totalExpense,
+      isLoading: isLoading ?? this.isLoading,
+      hasMore: hasMore ?? this.hasMore,
+    );
+  }
+}
+
+/// Feature repository managing data pagination and micro-state.
+class TransactionRepository {
+  static const int pageSize = 50;
+  final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+
+  final MicroState<TransactionState> stateNotifier = MicroState(
+    const TransactionState(
+      transactions: [],
+      totalIncome: 0.0,
+      totalExpense: 0.0,
+      isLoading: false,
+      hasMore: true,
+    ),
+  );
+
+  int _currentOffset = 0;
+  bool _isFetching = false;
+
+  /// Loads first page of transactions and summary totals.
+  Future<void> loadInitialData() async {
+    if (_isFetching) return;
+    _isFetching = true;
+    _currentOffset = 0;
+
+    stateNotifier.update(stateNotifier.value.copyWith(isLoading: true));
+
+    final rawTxList = await _dbHelper.getTransactionsPaginated(
+      limit: pageSize,
+      offset: 0,
+    );
+
+    final totals = await _dbHelper.getSummaryTotals();
+
+    final txModels = rawTxList.map((map) => TransactionModel.fromMap(map)).toList();
+
+    _currentOffset = txModels.length;
+
+    stateNotifier.update(
+      TransactionState(
+        transactions: txModels,
+        totalIncome: totals['income'] ?? 0.0,
+        totalExpense: totals['expense'] ?? 0.0,
+        isLoading: false,
+        hasMore: txModels.length == pageSize,
+      ),
+    );
+
+    _isFetching = false;
+  }
+
+  /// Appends next page of transactions on scroll
+  Future<void> loadMore() async {
+    if (_isFetching || !stateNotifier.value.hasMore) return;
+    _isFetching = true;
+
+    final rawTxList = await _dbHelper.getTransactionsPaginated(
+      limit: pageSize,
+      offset: _currentOffset,
+    );
+
+    final newTxModels = rawTxList.map((map) => TransactionModel.fromMap(map)).toList();
+
+    _currentOffset += newTxModels.length;
+
+    final updatedList = List<TransactionModel>.from(stateNotifier.value.transactions)
+      ..addAll(newTxModels);
+
+    stateNotifier.update(
+      stateNotifier.value.copyWith(
+        transactions: updatedList,
+        hasMore: newTxModels.length == pageSize,
+      ),
+    );
+
+    _isFetching = false;
+  }
+
+  /// Add new transaction with indexed SQL insert
+  Future<void> addTransaction(TransactionModel transaction) async {
+    await _dbHelper.insertTransaction(transaction.toMap());
+    await loadInitialData();
+  }
+
+  /// Delete transaction
+  Future<void> deleteTransaction(int id) async {
+    await _dbHelper.deleteTransaction(id);
+    await loadInitialData();
+  }
+
+  /// Clear all
+  Future<void> clearAll() async {
+    await _dbHelper.clearAllData();
+    await loadInitialData();
+  }
+}
