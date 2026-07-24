@@ -30,6 +30,12 @@ class FinancialMetrics {
   final double dailyBurnRate;
   final double emergencyFundMonths;
 
+  // Budget Engine Integration
+  final double totalBudgetAllocation;
+  final double totalBudgetSpent;
+  final double totalBudgetRemaining;
+  final double budgetHealthScore;
+
   // Financial Score (0 - 100)
   final int financialScore;
 
@@ -65,6 +71,10 @@ class FinancialMetrics {
     required this.savingsRate,
     required this.dailyBurnRate,
     required this.emergencyFundMonths,
+    required this.totalBudgetAllocation,
+    required this.totalBudgetSpent,
+    required this.totalBudgetRemaining,
+    required this.budgetHealthScore,
     required this.financialScore,
     required this.quarterIncome,
     required this.quarterExpense,
@@ -97,6 +107,10 @@ class FinancialMetrics {
       savingsRate: 0.0,
       dailyBurnRate: 0.0,
       emergencyFundMonths: 0.0,
+      totalBudgetAllocation: 0.0,
+      totalBudgetSpent: 0.0,
+      totalBudgetRemaining: 0.0,
+      budgetHealthScore: 100.0,
       financialScore: 100,
       quarterIncome: 0.0,
       quarterExpense: 0.0,

@@ -31,7 +31,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
@@ -68,6 +68,27 @@ class DatabaseHelper {
           await db.execute('ALTER TABLE budgets ADD COLUMN is_active INTEGER DEFAULT 1;');
         } catch (_) {}
         try {
+          await db.execute('ALTER TABLE budgets ADD COLUMN period_type TEXT DEFAULT "Monthly";');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE budgets ADD COLUMN carry_forward_rule TEXT DEFAULT "carry_remaining";');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE budgets ADD COLUMN carry_forward_amount REAL DEFAULT 0.0;');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE budgets ADD COLUMN transferred_amount REAL DEFAULT 0.0;');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE budgets ADD COLUMN recovered_amount REAL DEFAULT 0.0;');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE budgets ADD COLUMN start_date INTEGER;');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE budgets ADD COLUMN end_date INTEGER;');
+        } catch (_) {}
+        try {
           await db.execute('CREATE TABLE IF NOT EXISTS user_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);');
         } catch (_) {}
         try {
@@ -82,6 +103,33 @@ class DatabaseHelper {
               timestamp INTEGER NOT NULL
             );
           ''');
+        } catch (_) {}
+        try {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS budget_history (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              budget_id TEXT NOT NULL,
+              category_id TEXT NOT NULL,
+              category_name TEXT NOT NULL,
+              period_type TEXT NOT NULL,
+              period_key TEXT NOT NULL,
+              allocated_amount REAL NOT NULL,
+              spent_amount REAL NOT NULL,
+              remaining_amount REAL NOT NULL,
+              transferred_amount REAL DEFAULT 0.0,
+              recovered_amount REAL DEFAULT 0.0,
+              carry_forward_amount REAL DEFAULT 0.0,
+              health_score REAL DEFAULT 100.0,
+              completion_percentage REAL DEFAULT 0.0,
+              transaction_count INTEGER DEFAULT 0,
+              status TEXT DEFAULT 'On Track',
+              top_merchant TEXT,
+              created_at INTEGER NOT NULL
+            );
+          ''');
+        } catch (_) {}
+        try {
+          await _seedFundingAccountsIfMissing(db);
         } catch (_) {}
       },
     );
@@ -899,8 +947,121 @@ class DatabaseHelper {
     await db.delete('accounts');
     await db.delete('budgets');
     await db.delete('goals');
+    await db.delete('budget_history');
     await db.execute('VACUUM;');
     FinancialSyncService.instance.notifyMutation();
+  }
+
+  Future<void> _seedFundingAccountsIfMissing(Database db) async {
+    final nowTime = DateTime.now().millisecondsSinceEpoch;
+
+    final accountsToEnsure = [
+      {
+        'id': 'acc_wife',
+        'name': 'Wife Wallet',
+        'type': 'Checking',
+        'balance': 1500.0,
+        'opening_balance': 1500.0,
+        'credit_limit': 0.0,
+        'currency': 'USD',
+        'color_value': 0xFFF43F5E,
+        'is_active': 1,
+        'updated_at': nowTime,
+        'initial_principal': 1500.0,
+      },
+      {
+        'id': 'acc_son',
+        'name': 'Son Wallet',
+        'type': 'Savings',
+        'balance': 500.0,
+        'opening_balance': 500.0,
+        'credit_limit': 0.0,
+        'currency': 'USD',
+        'color_value': 0xFF0EA5E9,
+        'is_active': 1,
+        'updated_at': nowTime,
+        'initial_principal': 500.0,
+      },
+      {
+        'id': 'acc_daughter',
+        'name': 'Daughter Wallet',
+        'type': 'Savings',
+        'balance': 500.0,
+        'opening_balance': 500.0,
+        'credit_limit': 0.0,
+        'currency': 'USD',
+        'color_value': 0xFFA855F7,
+        'is_active': 1,
+        'updated_at': nowTime,
+        'initial_principal': 500.0,
+      },
+      {
+        'id': 'acc_investment',
+        'name': 'Investment Portfolio',
+        'type': 'Investment',
+        'balance': 10000.0,
+        'opening_balance': 10000.0,
+        'credit_limit': 0.0,
+        'currency': 'USD',
+        'color_value': 0xFF10B981,
+        'is_active': 1,
+        'updated_at': nowTime,
+        'initial_principal': 10000.0,
+      },
+      {
+        'id': 'acc_emergency',
+        'name': 'Emergency Reserve',
+        'type': 'Savings',
+        'balance': 5000.0,
+        'opening_balance': 5000.0,
+        'credit_limit': 0.0,
+        'currency': 'USD',
+        'color_value': 0xFFEAB308,
+        'is_active': 1,
+        'updated_at': nowTime,
+        'initial_principal': 5000.0,
+      },
+    ];
+
+    for (final acc in accountsToEnsure) {
+      final existing = await db.query('accounts', where: 'id = ?', whereArgs: [acc['id']]);
+      if (existing.isEmpty) {
+        await db.insert('accounts', acc);
+      }
+    }
+  }
+
+  // --- BUDGET HISTORY CRUD ---
+
+  Future<int> insertBudgetHistory(Map<String, dynamic> row) async {
+    final db = await database;
+    return await db.insert('budget_history', row);
+  }
+
+  Future<List<Map<String, dynamic>>> getBudgetHistory({
+    String? periodType,
+    String? periodKey,
+    String? categoryId,
+  }) async {
+    final db = await database;
+    final whereClauses = <String>[];
+    final whereArgs = <dynamic>[];
+
+    if (periodType != null) {
+      whereClauses.add('period_type = ?');
+      whereArgs.add(periodType);
+    }
+    if (periodKey != null) {
+      whereClauses.add('period_key = ?');
+      whereArgs.add(periodKey);
+    }
+    if (categoryId != null) {
+      whereClauses.add('category_id = ?');
+      whereArgs.add(categoryId);
+    }
+
+    final whereStr = whereClauses.isNotEmpty ? whereClauses.join(' AND ') : null;
+    return await db.query('budget_history', where: whereStr, whereArgs: whereArgs, orderBy: 'created_at DESC');
   }
 
   Future<void> close() async {

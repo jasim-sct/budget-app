@@ -77,13 +77,23 @@ class FinancialCalculationEngine {
     final dailyBurnRate = expense / daysInMonth;
     final emergencyFundMonths = dailyBurnRate > 0 ? (assets / (dailyBurnRate * 30)) : 0.0;
 
-    // 6. Deterministic Financial Score Engine (0 - 100)
+    // 6. Budget Engine Aggregation & Integration
+    final dbObj = await _db.database;
+    final budgetRows = await dbObj.rawQuery('SELECT SUM(amount_limit + carry_forward_amount) AS total_alloc FROM budgets WHERE is_active = 1');
+    final totalBudgetAllocation = (budgetRows.first['total_alloc'] as num?)?.toDouble() ?? 0.0;
+    final totalBudgetSpent = expense;
+    final totalBudgetRemaining = totalBudgetAllocation - totalBudgetSpent;
+    final budgetHealthScore = totalBudgetAllocation > 0
+        ? ((1.0 - (totalBudgetSpent / totalBudgetAllocation).clamp(0.0, 1.0)) * 100.0)
+        : 100.0;
+
+    // 7. Deterministic Financial Score Engine (0 - 100)
     final double savingsScore = (savingsRate * 0.4).clamp(0.0, 40.0);
     final double cashFlowScore = netCashFlow >= 0 ? 35.0 : 10.0;
     final double netWorthScore = netWorth >= 0 ? 25.0 : 5.0;
     final int score = (savingsScore + cashFlowScore + netWorthScore).round().clamp(0, 100);
 
-    // 7. Quarter & Annual Engine Rollups
+    // 8. Quarter & Annual Engine Rollups
     final currentQuarter = ((month - 1) ~/ 3) + 1;
     final qTotals = await _db.getQuarterTotals(year, currentQuarter);
     final qIncome = qTotals['income'] ?? 0.0;
@@ -93,7 +103,7 @@ class FinancialCalculationEngine {
     final aIncome = aTotals['income'] ?? 0.0;
     final aExpense = aTotals['expense'] ?? 0.0;
 
-    // 8. Forecast Engine (Linear Trend Projection)
+    // 9. Forecast Engine (Linear Trend Projection)
     final forecastExpense = expense > 0 ? expense * 0.98 : 0.0;
     final forecastIncome = income > 0 ? income * 1.02 : 0.0;
 
@@ -116,6 +126,10 @@ class FinancialCalculationEngine {
       savingsRate: savingsRate,
       dailyBurnRate: dailyBurnRate,
       emergencyFundMonths: emergencyFundMonths,
+      totalBudgetAllocation: totalBudgetAllocation,
+      totalBudgetSpent: totalBudgetSpent,
+      totalBudgetRemaining: totalBudgetRemaining,
+      budgetHealthScore: budgetHealthScore,
       financialScore: score,
       quarterIncome: qIncome,
       quarterExpense: qExpense,

@@ -37,7 +37,7 @@ class AppColors {
   static const Color lightTextPrimary = Color(0xFF0F172A);
   static const Color lightTextSecondary = Color(0xFF64748B);
 
-  // ── Compatibility aliases (mapped to primary blue) ──
+  // ── Compatibility aliases (mapped to primary blue & semantic colors) ──
   static const Color primaryEmerald = primaryBlue;
   static const Color primaryEmeraldDark = primaryBlueDark;
   static const Color accentViolet = primaryBlue;
@@ -46,6 +46,14 @@ class AppColors {
   static const Color accentAmber = warningOrange;
   static const Color accentRose = expenseRed;
   static const Color accentSky = Color(0xFF0EA5E9);
+
+  static const Color emerald = incomeGreen;
+  static const Color rose = expenseRed;
+  static const Color amber = warningOrange;
+  static const Color cyan = accentCyan;
+  static const Color textSecondary = darkTextSecondary;
+  static const Color glassBorder = darkBorder;
+  static const Color surfaceDark = darkSurface;
 
   // ── Minimal Gradient (Primary button / hero only) ──
   static const LinearGradient primaryGradient = LinearGradient(

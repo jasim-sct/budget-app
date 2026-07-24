@@ -41,6 +41,16 @@ abstract class AppFormatters {
     return isNegative ? '-$result' : result;
   }
 
+  static String currencyCompact(double amount, {String? symbol}) {
+    final String actualSymbol = symbol ?? CurrencyProvider.instance.currentSymbol;
+    if (amount >= 1000000) {
+      return '$actualSymbol${(amount / 1000000).toStringAsFixed(1)}M';
+    } else if (amount >= 1000) {
+      return '$actualSymbol${(amount / 1000).toStringAsFixed(1)}k';
+    }
+    return '$actualSymbol${amount.toStringAsFixed(0)}';
+  }
+
   static String date(DateTime dt) {
     final year = dt.year;
     final month = dt.month.toString().padLeft(2, '0');

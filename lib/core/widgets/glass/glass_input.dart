@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../services/currency_provider.dart';
-import '../theme/app_colors.dart';
-import '../theme/app_spacing.dart';
-import '../theme/app_typography.dart';
+import '../../services/currency_provider.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
+import '../../theme/app_typography.dart';
 
 /// Professional text input – unified with AppTextField styling.
 class GlassInput extends StatefulWidget {
@@ -22,7 +22,7 @@ class GlassInput extends StatefulWidget {
   const GlassInput({
     super.key,
     this.controller,
-    required this.label,
+    this.label = '',
     this.hint,
     this.errorText,
     this.prefixIcon,
