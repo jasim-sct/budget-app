@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Centralized Spacing, Radius, and Shadow Tokens (strict 8px grid).
+/// Centralized Spacing, Radius, Shadow, and Duration Tokens.
 abstract class AppSpacing {
   static const double xxs = 2.0;
   static const double xs = 4.0;
@@ -13,6 +13,11 @@ abstract class AppSpacing {
 
   /// Standard page horizontal padding.
   static const double pagePadding = 16.0;
+
+  /// Semantic spacing tokens.
+  static const double sectionGap = 20.0;
+  static const double cardInner = 14.0;
+  static const double screenPadding = 16.0;
 }
 
 abstract class AppRadius {
@@ -32,7 +37,6 @@ abstract class AppRadius {
 }
 
 abstract class AppShadows {
-  /// No shadow.
   static const List<BoxShadow> none = [];
 
   /// Subtle shadow for flat cards and inputs.
@@ -62,11 +66,18 @@ abstract class AppShadows {
     ),
   ];
 
-  // ── Legacy aliases (kept for backward compatibility) ──
   static const List<BoxShadow> soft = sm;
   static const List<BoxShadow> card = md;
   static const List<BoxShadow> floating = lg;
 
   static List<BoxShadow> glow(Color color) => md;
   static List<BoxShadow> neonGlow(Color color) => md;
+}
+
+/// Standardized animation durations.
+abstract class AppDurations {
+  static const Duration fast = Duration(milliseconds: 150);
+  static const Duration normal = Duration(milliseconds: 250);
+  static const Duration slow = Duration(milliseconds: 400);
+  static const Duration pageTransition = Duration(milliseconds: 200);
 }

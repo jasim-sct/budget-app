@@ -8,9 +8,12 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/financial_knowledge_sheet.dart';
 import '../../../core/widgets/month_selector_bar.dart';
+import '../../../core/widgets/scan_first_components.dart';
 
 /// Financial Statements & Reports Screen.
+/// Follows Scan-First Reading Experience & Mobile-First layout (320px+ viewports).
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
 
@@ -87,6 +90,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     final income = _summary['income'] ?? 0.0;
     final expense = _summary['expense'] ?? 0.0;
     final netCashFlow = income - expense;
+    final topCategory = _breakdown.isNotEmpty ? _breakdown.first['category'] as String : 'None';
+    final topCategorySpent = _breakdown.isNotEmpty ? (_breakdown.first['total'] as num).toDouble() : 0.0;
 
     return Scaffold(
       appBar: AppBar(
@@ -99,7 +104,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           indicatorSize: TabBarIndicatorSize.tab,
           tabs: const [
             Tab(text: 'Summary'),
-            Tab(text: 'Income Stmt'),
+            Tab(text: 'P&L Stmt'),
             Tab(text: 'Cash Flow'),
           ],
         ),
@@ -107,58 +112,155 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       body: TabBarView(
         controller: _tabController,
         children: [
-          // 1. Summary Tab
+          // 1. Summary Tab (Scan-First Conclusions First)
           ListView(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
             children: [
               const MonthSelectorBar(),
-              const SizedBox(height: AppSpacing.sm),
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('EXECUTIVE CASH FLOW SUMMARY', style: AppTypography.sectionLabel(isDark)),
-                    const SizedBox(height: AppSpacing.sm),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('INFLOW', style: AppTypography.sectionLabel(isDark).copyWith(color: AppColors.incomeGreen)),
-                            const SizedBox(height: AppSpacing.xxs),
-                            Text(AppFormatters.currency(income), style: AppTypography.titleLarge(isDark)),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('OUTFLOW', style: AppTypography.sectionLabel(isDark).copyWith(color: AppColors.expenseRed)),
-                            const SizedBox(height: AppSpacing.xxs),
-                            Text(AppFormatters.currency(expense), style: AppTypography.titleLarge(isDark)),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('NET CASH FLOW', style: AppTypography.sectionLabel(isDark).copyWith(color: AppColors.primaryBlue)),
-                            const SizedBox(height: AppSpacing.xxs),
-                            Text(
-                              AppFormatters.currency(netCashFlow),
-                              style: AppTypography.titleLarge(isDark).copyWith(
-                                color: netCashFlow >= 0 ? AppColors.incomeGreen : AppColors.expenseRed,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+              const SizedBox(height: AppSpacing.xs),
+
+              // HIGHLIGHTED CONCLUSIONS GRID
+              Text('EXECUTIVE CONCLUSIONS', style: AppTypography.sectionLabel(isDark).copyWith(color: AppColors.primaryBlue)),
+              const SizedBox(height: AppSpacing.xs),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: AppScannableKpiTile(
+                      title: 'Total Spent',
+                      value: AppFormatters.currency(expense),
+                      statusPill: expense > 0 ? 'OUTFLOW' : 'ZERO',
+                      statusColor: expense > 0 ? AppColors.expenseRed : AppColors.incomeGreen,
+                      subtitle: 'Period Total',
                     ),
-                  ],
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: AppScannableKpiTile(
+                      title: 'Top Category',
+                      value: topCategory,
+                      statusPill: AppFormatters.currency(topCategorySpent),
+                      statusColor: AppColors.warningOrange,
+                      subtitle: 'Highest Category',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppScannableKpiTile(
+                      title: 'Net Savings',
+                      value: AppFormatters.currency(netCashFlow),
+                      statusPill: netCashFlow >= 0 ? 'ON TARGET' : 'DEFICIT',
+                      statusColor: netCashFlow >= 0 ? AppColors.incomeGreen : AppColors.expenseRed,
+                      subtitle: 'Retained Cash',
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: AppScannableKpiTile(
+                      title: 'Total Income',
+                      value: AppFormatters.currency(income),
+                      statusPill: 'INFLOW',
+                      statusColor: AppColors.incomeGreen,
+                      subtitle: 'Gross Revenue',
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: AppSpacing.sm),
+
+              // FINANCIAL STATEMENT CASH FLOW BAR
+              GestureDetector(
+                onTap: () {
+                  FinancialKnowledgeSheet.showForMetric(
+                    context,
+                    type: FinancialMetricType.netCashFlow,
+                    metricValue: AppFormatters.currency(netCashFlow),
+                    customTitle: 'Executive Cash Flow Statement',
+                    customSources: [
+                      'Total Inflow (Income): ${AppFormatters.currency(income)}',
+                      'Total Outflow (Expenses): ${AppFormatters.currency(expense)}',
+                      'Net Retained Cash: ${AppFormatters.currency(netCashFlow)}',
+                      'Active Period: ${AppFormatters.monthYear(date)}',
+                    ],
+                  );
+                },
+                child: AppCard(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('CASH FLOW SUMMARY', style: AppTypography.sectionLabel(isDark)),
+                          const Icon(Icons.info_outline_rounded, size: 14, color: AppColors.primaryBlue),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('INFLOW', style: AppTypography.sectionLabel(isDark).copyWith(color: AppColors.incomeGreen, fontSize: 9)),
+                                const SizedBox(height: 2),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(AppFormatters.currency(income), style: AppTypography.titleMedium(isDark)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('OUTFLOW', style: AppTypography.sectionLabel(isDark).copyWith(color: AppColors.expenseRed, fontSize: 9)),
+                                const SizedBox(height: 2),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(AppFormatters.currency(expense), style: AppTypography.titleMedium(isDark)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('NET CASH', style: AppTypography.sectionLabel(isDark).copyWith(color: AppColors.primaryBlue, fontSize: 9)),
+                                const SizedBox(height: 2),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    AppFormatters.currency(netCashFlow),
+                                    style: AppTypography.titleMedium(isDark).copyWith(
+                                      color: netCashFlow >= 0 ? AppColors.incomeGreen : AppColors.expenseRed,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.lg),
-              Text('TOP CATEGORY EXPENSES', style: AppTypography.sectionLabel(isDark)),
               const SizedBox(height: AppSpacing.sm),
+
+              // CATEGORY BREAKDOWN LIST
+              Text('CATEGORY BREAKDOWN', style: AppTypography.sectionLabel(isDark)),
+              const SizedBox(height: AppSpacing.xs),
               _isLoading
                   ? const Center(child: CircularProgressIndicator(strokeWidth: 2.0))
                   : _breakdown.isEmpty
@@ -171,6 +273,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                           ),
                         )
                       : AppCard(
+                          padding: const EdgeInsets.all(AppSpacing.xs),
                           child: Column(
                             children: _breakdown.map((row) {
                               final cat = row['category'] as String;
@@ -178,16 +281,31 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                               final pct = expense > 0 ? ((total / expense) * 100).toStringAsFixed(1) : '0.0';
 
                               return Padding(
-                                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(cat, style: AppTypography.titleMedium(isDark)),
+                                    Expanded(
+                                      child: Text(
+                                        cat,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: AppTypography.titleMedium(isDark),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
                                     Row(
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text('$pct%', style: AppTypography.caption(isDark)),
-                                        const SizedBox(width: AppSpacing.sm),
-                                        Text(AppFormatters.currency(total), style: AppTypography.titleMedium(isDark)),
+                                        AppStatusBadge(
+                                          label: '$pct%',
+                                          color: AppColors.primaryBlue,
+                                        ),
+                                        const SizedBox(width: AppSpacing.xs),
+                                        Text(
+                                          AppFormatters.currency(total),
+                                          style: AppTypography.titleMedium(isDark).copyWith(fontWeight: FontWeight.w800),
+                                        ),
                                       ],
                                     ),
                                   ],
@@ -196,7 +314,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                             }).toList(),
                           ),
                         ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.md),
               AppButton(
                 label: 'Export ${AppFormatters.shortMonthYear(date)} Report (CSV)',
                 icon: Icons.file_download_outlined,
@@ -208,16 +326,16 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
           // 2. Income Statement Tab
           ListView(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
             children: [
               const MonthSelectorBar(),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.xs),
               AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('INCOME STATEMENT (P&L)', style: AppTypography.sectionLabel(isDark)),
-                    const SizedBox(height: AppSpacing.md),
+                    const SizedBox(height: AppSpacing.sm),
                     _buildRow('Gross Revenue (Income)', income, isDark: isDark, isPositive: true),
                     const Divider(),
                     _buildRow('Operating Outflows (Expenses)', expense, isDark: isDark, isPositive: false),
@@ -231,16 +349,16 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
           // 3. Cash Flow Statement Tab
           ListView(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
             children: [
               const MonthSelectorBar(),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.xs),
               AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('CASH FLOW STATEMENT', style: AppTypography.sectionLabel(isDark)),
-                    const SizedBox(height: AppSpacing.md),
+                    const SizedBox(height: AppSpacing.sm),
                     _buildRow('Operating Inflows', income, isDark: isDark, isPositive: true),
                     _buildRow('Operating Outflows', expense, isDark: isDark, isPositive: false),
                     const Divider(),
@@ -261,15 +379,20 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: isBold ? AppTypography.titleLarge(isDark) : AppTypography.bodyMedium(isDark),
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: isBold ? AppTypography.titleLarge(isDark).copyWith(fontSize: 14) : AppTypography.bodyMedium(isDark),
+            ),
           ),
+          const SizedBox(width: 6),
           Text(
             AppFormatters.currency(value),
             style: TextStyle(
               fontSize: 14,
-              fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
+              fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
               color: isBold
                   ? (value >= 0 ? AppColors.incomeGreen : AppColors.expenseRed)
                   : (isPositive ? AppColors.incomeGreen : AppColors.expenseRed),

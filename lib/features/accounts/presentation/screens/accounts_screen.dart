@@ -1,25 +1,20 @@
 import 'package:flutter/material.dart';
-import '../../../../core/database/database_helper.dart';
 import '../../../../core/services/financial_calculation_engine.dart';
 import '../../../../core/services/financial_metrics.dart';
-import '../../../../core/services/financial_sync_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
-import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/animated_number_text.dart';
 import '../../../../core/widgets/app_card.dart';
-import '../../../../core/widgets/app_chip.dart';
-import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
-import '../../../../core/widgets/glass/glass_bottom_sheet.dart';
-import '../../../transactions/domain/transaction_model.dart';
-import '../../../transactions/presentation/add_transaction_dialog.dart';
 import '../../application/accounts_controller.dart';
 import '../../domain/models/account_model.dart';
+import '../modals/add_account_modal.dart';
 import '../modals/account_detail_modal.dart';
 
-/// Commercial-Grade Wallets & Accounts Screen.
+/// Money Screen — "Where does my money live?"
+/// Calm, clear view of accounts and net worth.
 class AccountsScreen extends StatefulWidget {
   final AccountsController controller;
 
@@ -33,11 +28,6 @@ class AccountsScreen extends StatefulWidget {
 }
 
 class _AccountsScreenState extends State<AccountsScreen> {
-  static const List<AccountType> _allowedWalletTypes = [
-    AccountType.bank,
-    AccountType.cash,
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -45,148 +35,13 @@ class _AccountsScreenState extends State<AccountsScreen> {
     FinancialCalculationEngine.instance.recalculate();
   }
 
-  String _getAccountTypeLabel(AccountType type) {
-    switch (type) {
-      case AccountType.bank:
-        return 'BANK';
-      case AccountType.cash:
-        return 'WALLET';
-      default:
-        return type.name.toUpperCase();
-    }
-  }
-
-  void _showAddLedgerModal({String? accountId, TransactionType initialType = TransactionType.income}) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => AddTransactionDialog(
-        initialAccountId: accountId,
-        initialType: initialType,
-        onSubmit: (tx) async {
-          await DatabaseHelper.instance.insertTransaction(tx.toMap());
-          FinancialSyncService.instance.notifyMutation();
-          await FinancialCalculationEngine.instance.recalculate();
-        },
-      ),
-    );
-  }
-
   void _showAddAccountModal() {
-    final nameController = TextEditingController();
-    final balanceController = TextEditingController(text: '0.00');
-    AccountType selectedType = AccountType.bank;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (bottomContext) {
-        final isDark = Theme.of(bottomContext).brightness == Brightness.dark;
-
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return GlassBottomSheet(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Add Wallet or Bank Account',
-                      style: AppTypography.headline(isDark),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    AppTextField(
-                      controller: nameController,
-                      label: 'ACCOUNT NAME',
-                      hint: 'e.g. Chase Bank, Main Cash Wallet, Savings Account',
-                      prefixIcon: Icons.account_balance_rounded,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    AppTextField(
-                      controller: balanceController,
-                      label: 'INITIAL LEDGER BALANCE',
-                      hint: '0.00',
-                      isCurrency: true,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'An opening ledger entry will be recorded automatically for this wallet.',
-                      style: AppTypography.caption(isDark),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text('WALLET TYPE', style: AppTypography.sectionLabel(isDark)),
-                    const SizedBox(height: AppSpacing.xs),
-                    Row(
-                      children: _allowedWalletTypes.map((type) {
-                        final isSelected = selectedType == type;
-                        return Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: AppSpacing.xs),
-                            child: AppChip(
-                              label: _getAccountTypeLabel(type),
-                              isSelected: isSelected,
-                              onTap: () => setModalState(() => selectedType = type),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    AppButton(
-                      label: 'Save Account',
-                      onPressed: () async {
-                        final name = nameController.text.trim();
-                        final initialBalance = double.tryParse(balanceController.text.trim()) ?? 0.0;
-
-                        if (name.isNotEmpty) {
-                          final accountId = 'acc_${DateTime.now().millisecondsSinceEpoch}';
-                          final account = AccountModel(
-                            id: accountId,
-                            name: name,
-                            type: selectedType,
-                            balance: 0.0,
-                            currency: 'USD',
-                            colorValue: 0xFF10B981,
-                            updatedAt: DateTime.now().millisecondsSinceEpoch,
-                          );
-                          await widget.controller.saveAccount(account);
-
-                          if (initialBalance != 0) {
-                            final initialTx = TransactionModel(
-                              title: 'Initial Balance - $name',
-                              amount: initialBalance.abs(),
-                              dateMilliseconds: DateTime.now().millisecondsSinceEpoch,
-                              category: 'Salary & Wages',
-                              type: initialBalance >= 0 ? TransactionType.income : TransactionType.expense,
-                              accountId: accountId,
-                              accountName: name,
-                            );
-                            await DatabaseHelper.instance.insertTransaction(initialTx.toMap());
-                            FinancialSyncService.instance.notifyMutation();
-                            await FinancialCalculationEngine.instance.recalculate();
-                          }
-
-                          if (bottomContext.mounted) {
-                            Navigator.pop(bottomContext);
-                          }
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
+    AddAccountModal.show(
+      context,
+      onSaved: (acc) async {
+        await widget.controller.loadAccounts();
       },
-    ).then((_) {
-      nameController.dispose();
-      balanceController.dispose();
-    });
+    );
   }
 
   @override
@@ -195,7 +50,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Wallets & Net Worth'),
+        title: const Text('Money'),
       ),
       body: ValueListenableBuilder<FinancialMetrics>(
         valueListenable: FinancialCalculationEngine.instance.metricsNotifier,
@@ -214,198 +69,243 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 );
               }
 
-              if (state.accounts.isEmpty) {
-                return EmptyStateWidget(
-                  icon: Icons.account_balance_wallet_outlined,
-                  title: 'No Accounts Configured',
-                  description: 'Add your bank accounts or cash wallets to track your Net Worth.',
-                  actionLabel: 'Add First Account',
-                  onActionTap: _showAddAccountModal,
-                );
-              }
-
-              return Column(
+              return ListView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenPadding,
+                  vertical: AppSpacing.sm,
+                ),
                 children: [
-                  // Net Worth & Liabilities Banner Card
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-                    child: AppCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'NET WORTH AGGREGATION',
-                            style: AppTypography.sectionLabel(isDark),
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            AppFormatters.currency(metrics.netWorth),
-                            style: AppTypography.displayLarge(isDark).copyWith(fontSize: 28),
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.arrow_upward_rounded, color: AppColors.incomeGreen, size: 14),
-                                  const SizedBox(width: AppSpacing.xs),
-                                  Text(
-                                    'Assets: ${AppFormatters.currency(metrics.totalAssets)}',
-                                    style: AppTypography.titleMedium(isDark),
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                children: [
-                                  const Icon(Icons.arrow_downward_rounded, color: AppColors.expenseRed, size: 14),
-                                  const SizedBox(width: AppSpacing.xs),
-                                  Text(
-                                    'Liabilities: ${AppFormatters.currency(metrics.totalLiabilities)}',
-                                    style: AppTypography.titleMedium(isDark),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
+                  // Net Worth Hero
+                  _NetWorthHero(
+                    netWorth: metrics.netWorth,
+                    totalAssets: metrics.totalAssets,
+                    totalLiabilities: metrics.totalLiabilities,
+                    isDark: isDark,
                   ),
 
-                  // Account List
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: state.accounts.length,
-                      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
-                      itemBuilder: (context, index) {
-                        final acc = state.accounts[index];
-                        final IconData icon = _getAccountIcon(acc.type);
+                  const SizedBox(height: AppSpacing.sectionGap),
 
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                          child: AppCard(
-                            onTap: () {
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                builder: (_) => AccountDetailModal(account: acc),
-                              );
-                            },
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: Color(acc.colorValue).withValues(alpha: 0.12),
-                                    borderRadius: AppRadius.borderSm,
-                                  ),
-                                  child: Icon(icon, color: Color(acc.colorValue), size: 20),
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        acc.name,
-                                        style: AppTypography.titleLarge(isDark),
-                                      ),
-                                      Text(
-                                        _getAccountTypeLabel(acc.type),
-                                        style: AppTypography.labelSmall(isDark),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      AppFormatters.currency(acc.balance),
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w700,
-                                        color: acc.balance < 0 ? AppColors.expenseRed : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
-                                      ),
-                                    ),
-                                    const SizedBox(height: AppSpacing.xs),
-                                    InkWell(
-                                      onTap: () => _showAddLedgerModal(accountId: acc.id),
-                                      borderRadius: AppRadius.borderSm,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primaryBlue.withValues(alpha: 0.12),
-                                          borderRadius: AppRadius.borderSm,
-                                        ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.add_rounded, size: 12, color: AppColors.primaryBlue),
-                                            SizedBox(width: 2),
-                                            Text(
-                                              'Ledger',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                                color: AppColors.primaryBlue,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                  // Account list header
+                  Text(
+                    'ACCOUNTS',
+                    style: AppTypography.insightLabel(isDark),
                   ),
+                  const SizedBox(height: AppSpacing.sm),
+
+                  if (state.accounts.isEmpty)
+                    EmptyStateWidget(
+                      icon: Icons.account_balance_wallet_outlined,
+                      title: 'No accounts yet',
+                      description: 'Add your bank accounts or cash wallets to track your money.',
+                      actionLabel: 'Add Account',
+                      onActionTap: _showAddAccountModal,
+                    )
+                  else
+                    ...state.accounts.map((acc) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        child: _AccountCard(
+                          account: acc,
+                          isDark: isDark,
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) => AccountDetailModal(account: acc),
+                            );
+                          },
+                        ),
+                      );
+                    }),
+
+                  const SizedBox(height: AppSpacing.xl),
                 ],
               );
             },
           );
         },
       ),
-      floatingActionButton: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+    );
+  }
+}
+
+/// Net worth hero section — calm, value-dominant.
+class _NetWorthHero extends StatelessWidget {
+  final double netWorth;
+  final double totalAssets;
+  final double totalLiabilities;
+  final bool isDark;
+
+  const _NetWorthHero({
+    required this.netWorth,
+    required this.totalAssets,
+    required this.totalLiabilities,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.sectionGap),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          FloatingActionButton.extended(
-            heroTag: 'fab_add_ledger',
-            onPressed: () => _showAddLedgerModal(),
-            icon: const Icon(Icons.add_card_rounded, size: 20),
-            label: const Text('Add Ledger'),
+          Text(
+            'Net worth',
+            style: AppTypography.insightLabel(isDark).copyWith(
+              letterSpacing: 0.3,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-          const SizedBox(width: AppSpacing.sm),
-          FloatingActionButton(
-            heroTag: 'fab_add_wallet',
-            onPressed: _showAddAccountModal,
-            tooltip: 'Add Wallet Account',
-            child: const Icon(Icons.account_balance_wallet_rounded, size: 20),
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: AnimatedNumberText(
+              value: netWorth,
+              style: AppTypography.financialHero(isDark),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: _NetWorthMetric(
+                  label: 'Assets',
+                  value: AppFormatters.currency(totalAssets),
+                  color: AppColors.incomeGreen,
+                  isDark: isDark,
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 28,
+                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              ),
+              Expanded(
+                child: _NetWorthMetric(
+                  label: 'Liabilities',
+                  value: AppFormatters.currency(totalLiabilities),
+                  color: AppColors.expenseRed,
+                  isDark: isDark,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+}
 
-  IconData _getAccountIcon(AccountType type) {
-    switch (type) {
-      case AccountType.cash:
-        return Icons.payments_rounded;
-      case AccountType.bank:
-        return Icons.account_balance_rounded;
-      case AccountType.savings:
-        return Icons.savings_rounded;
-      case AccountType.creditCard:
-        return Icons.credit_card_rounded;
-      case AccountType.investment:
-        return Icons.show_chart_rounded;
-    }
+class _NetWorthMetric extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final bool isDark;
+
+  const _NetWorthMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      child: Column(
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            label,
+            style: AppTypography.caption(isDark).copyWith(fontSize: 10.5),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Clean account card — icon, name, type, balance.
+class _AccountCard extends StatelessWidget {
+  final AccountModel account;
+  final bool isDark;
+  final VoidCallback? onTap;
+
+  const _AccountCard({
+    required this.account,
+    required this.isDark,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Color(account.colorValue).withValues(alpha: 0.12),
+              borderRadius: AppRadius.borderSm,
+            ),
+            child: Icon(
+              account.type == AccountType.cash
+                  ? Icons.wallet_rounded
+                  : Icons.account_balance_rounded,
+              color: Color(account.colorValue),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  account.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.titleMedium(isDark).copyWith(fontSize: 14),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  account.type == AccountType.cash ? 'Cash wallet' : 'Bank account',
+                  style: AppTypography.caption(isDark).copyWith(fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              AppFormatters.currency(account.balance),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.3,
+                color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

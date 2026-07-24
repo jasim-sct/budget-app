@@ -2,17 +2,18 @@ import 'package:flutter/material.dart';
 import '../../../core/services/global_filter_controller.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/global_filter_bar.dart';
+import '../../../core/widgets/month_selector_bar.dart';
 import '../../categories/presentation/categories_screen.dart';
 import '../../reports/presentation/reports_screen.dart';
 import '../data/transaction_repository.dart';
 import '../domain/transaction_model.dart';
-import 'add_transaction_dialog.dart';
-import 'transaction_detail_modal.dart';
 import 'widgets/transaction_item_tile.dart';
 
-/// Master Financial Ledger Screen.
+/// Activity Screen — chronological financial journal.
+/// Users think: "What happened with my money?"
 class TransactionsScreen extends StatefulWidget {
   final TransactionRepository repository;
 
@@ -63,24 +64,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
-  void _openAddTransactionModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => AddTransactionDialog(
-        onSubmit: (tx) {
-          widget.repository.addTransaction(tx);
-        },
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ledger'),
+        title: const Text('Activity'),
         actions: [
           IconButton(
             icon: const Icon(Icons.category_outlined, size: 20),
@@ -93,7 +83,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.analytics_outlined, size: 20),
+            icon: const Icon(Icons.table_chart_outlined, size: 20),
             tooltip: 'Reports',
             onPressed: () {
               Navigator.push(
@@ -106,13 +96,22 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       ),
       body: Column(
         children: [
-          // Global Filter Bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-            child: const GlobalFilterBar(),
+          // Month selector
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
+            child: MonthSelectorBar(),
           ),
 
-          // Transaction List
+          // Filter bar
+          const Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.screenPadding,
+              vertical: AppSpacing.xs,
+            ),
+            child: GlobalFilterBar(),
+          ),
+
+          // Transaction list
           Expanded(
             child: ListenableBuilder(
               listenable: widget.repository.stateNotifier,
@@ -133,24 +132,29 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 if (displayList.isEmpty) {
                   return EmptyStateWidget(
                     icon: Icons.receipt_long_outlined,
-                    title: 'No Transactions Found',
+                    title: 'No transactions yet',
                     description: GlobalFilterController.instance.state.isFilterActive
-                        ? 'No transactions matched the active filters. Try resetting your search filter.'
-                        : 'Your ledger is empty. Tap below to log your first transaction.',
-                    actionLabel: 'Add Transaction',
-                    onActionTap: _openAddTransactionModal,
+                        ? 'No transactions matched your filters.'
+                        : 'Your activity log is empty. Tap below to get started.',
+                    actionLabel: 'Log Transaction',
+                    onActionTap: null,
                   );
                 }
 
                 return ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screenPadding,
+                    AppSpacing.sm,
+                    AppSpacing.screenPadding,
+                    AppSpacing.sm,
+                  ),
                   itemCount: displayList.length + (state.hasMore ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == displayList.length) {
-                      return const Padding(
-                        padding: EdgeInsets.all(AppSpacing.md),
-                        child: Center(
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(AppSpacing.md),
                           child: CircularProgressIndicator(
                             strokeWidth: 2.0,
                             color: AppColors.primaryBlue,
@@ -160,27 +164,35 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     }
 
                     final tx = displayList[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                      child: TransactionItemTile(
-                        transaction: tx,
-                        onTap: () {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (_) => TransactionDetailModal(
-                              transaction: tx,
-                              onUpdateRequested: () => widget.repository.loadInitialData(),
-                            ),
-                          );
-                        },
-                        onDelete: () {
-                          if (tx.id != null) {
-                            widget.repository.deleteTransaction(tx.id!);
-                          }
-                        },
-                      ),
+
+                    // Date grouping header
+                    Widget? dateHeader;
+                    if (index == 0 || _shouldShowDateHeader(displayList, index)) {
+                      final date = DateTime.fromMillisecondsSinceEpoch(tx.dateMilliseconds);
+                      dateHeader = Padding(
+                        padding: EdgeInsets.only(
+                          top: index == 0 ? 0 : AppSpacing.md,
+                          bottom: AppSpacing.xs,
+                        ),
+                        child: Text(
+                          _formatDateGroupHeader(date),
+                          style: AppTypography.insightLabel(isDark),
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (dateHeader != null) dateHeader,
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                          child: TransactionItemTile(
+                            transaction: tx,
+                            onTap: () {},
+                          ),
+                        ),
+                      ],
                     );
                   },
                 );
@@ -189,12 +201,27 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'fab_transactions_screen',
-        onPressed: _openAddTransactionModal,
-        icon: const Icon(Icons.add_rounded, size: 20),
-        label: const Text('Add Entry'),
-      ),
     );
+  }
+
+  bool _shouldShowDateHeader(List<TransactionModel> list, int index) {
+    if (index == 0) return true;
+    final current = DateTime.fromMillisecondsSinceEpoch(list[index].dateMilliseconds);
+    final previous = DateTime.fromMillisecondsSinceEpoch(list[index - 1].dateMilliseconds);
+    return current.day != previous.day ||
+        current.month != previous.month ||
+        current.year != previous.year;
+  }
+
+  String _formatDateGroupHeader(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dateDay = DateTime(date.year, date.month, date.day);
+
+    if (dateDay == today) return 'TODAY';
+    if (dateDay == today.subtract(const Duration(days: 1))) return 'YESTERDAY';
+
+    final months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    return '${months[date.month - 1]} ${date.day}';
   }
 }

@@ -6,6 +6,7 @@ import '../../../../core/utils/formatters.dart';
 import '../../domain/transaction_model.dart';
 
 /// Professional transaction list tile with formatted date/time, click-to-view detail modal, and swipe-to-delete.
+/// Fully responsive down to 320px minimum mobile viewports.
 class TransactionItemTile extends StatelessWidget {
   final TransactionModel transaction;
   final VoidCallback? onDelete;
@@ -94,13 +95,13 @@ class TransactionItemTile extends StatelessWidget {
                 width: 1.0,
               ),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
             child: Row(
               children: [
                 // Icon Badge
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     color: isIncome
                         ? AppColors.incomeGreen.withValues(alpha: 0.12)
@@ -110,10 +111,10 @@ class TransactionItemTile extends StatelessWidget {
                   child: Icon(
                     categoryIcon,
                     color: isIncome ? AppColors.incomeGreen : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-                    size: 20,
+                    size: 18,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
+                const SizedBox(width: AppSpacing.xs),
 
                 // Title & Category
                 Expanded(
@@ -125,26 +126,34 @@ class TransactionItemTile extends StatelessWidget {
                         transaction.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTypography.titleMedium(isDark),
+                        style: AppTypography.titleMedium(isDark).copyWith(fontSize: 13.5),
                       ),
-                      const SizedBox(height: AppSpacing.xxs),
+                      const SizedBox(height: 2),
                       Row(
                         children: [
-                          Text(
-                            transaction.category,
-                            style: AppTypography.labelSmall(isDark),
+                          Flexible(
+                            child: Text(
+                              transaction.category,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.labelSmall(isDark).copyWith(fontSize: 10),
+                            ),
                           ),
                           if (transaction.accountName != null && transaction.accountName!.isNotEmpty) ...[
                             Text(
                               ' • ',
-                              style: AppTypography.labelSmall(isDark),
+                              style: AppTypography.labelSmall(isDark).copyWith(fontSize: 10),
                             ),
-                            Text(
-                              transaction.accountName!,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.primaryBlue,
+                            Flexible(
+                              child: Text(
+                                transaction.accountName!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primaryBlue,
+                                ),
                               ),
                             ),
                           ],
@@ -153,24 +162,28 @@ class TransactionItemTile extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(width: 4),
 
                 // Amount & Formatted Date & Time
                 Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      '$sign${AppFormatters.currency(transaction.amount)}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: amountColor,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '$sign${AppFormatters.currency(transaction.amount)}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: amountColor,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.xxs),
+                    const SizedBox(height: 2),
                     Text(
                       AppFormatters.dateTimeShortFromMs(transaction.dateMilliseconds),
-                      style: AppTypography.labelSmall(isDark).copyWith(fontSize: 10),
+                      style: AppTypography.labelSmall(isDark).copyWith(fontSize: 9.5),
                     ),
                   ],
                 ),

@@ -7,6 +7,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/app_text_field.dart';
+import '../../../core/widgets/feedback_toast.dart';
 import '../../../core/widgets/glass/glass_bottom_sheet.dart';
 import '../../accounts/domain/models/account_model.dart';
 import '../../budgets/data/datasources/budget_dao.dart';
@@ -15,7 +16,7 @@ import '../../categories/domain/category_model.dart';
 import '../../categories/presentation/add_category_dialog.dart';
 import '../domain/transaction_model.dart';
 
-/// Modal Bottom Sheet for adding ledger transactions.
+/// Modal Bottom Sheet for adding ledger transactions with behavioral auto-suggestions and quick preset chips.
 class AddTransactionDialog extends StatefulWidget {
   final String? initialAccountId;
   final TransactionType? initialType;
@@ -50,12 +51,12 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
     super.initState();
     _titleController = TextEditingController();
     _amountController = TextEditingController();
-    
+
     _selectedType = widget.initialType ?? (widget.initialAccountId != null ? TransactionType.income : TransactionType.expense);
     _selectedCategory = _selectedType == TransactionType.income ? 'Salary & Wages' : 'Food & Dining';
     _categoryController = TextEditingController(text: _selectedCategory);
     _selectedAccountId = widget.initialAccountId;
-    
+
     CategoryRepository.instance.loadCategories();
     _loadAccounts();
     _loadBudgets();
@@ -80,15 +81,17 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
         if (_selectedAccountId != null) {
           final matched = _accounts.firstWhere(
             (a) => a.id == _selectedAccountId,
-            orElse: () => _accounts.isNotEmpty ? _accounts.first : AccountModel(
-              id: 'acc_cash',
-              name: 'Cash Wallet',
-              type: AccountType.cash,
-              balance: 0.0,
-              currency: 'USD',
-              colorValue: 0xFF10B981,
-              updatedAt: 0,
-            ),
+            orElse: () => _accounts.isNotEmpty
+                ? _accounts.first
+                : AccountModel(
+                    id: 'acc_cash',
+                    name: 'Cash Wallet',
+                    type: AccountType.cash,
+                    balance: 0.0,
+                    currency: 'USD',
+                    colorValue: 0xFF10B981,
+                    updatedAt: 0,
+                  ),
           );
           _selectedAccountId = matched.id;
           _selectedAccountName = matched.name;
@@ -111,17 +114,50 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
     super.dispose();
   }
 
+  void _onTitleChanged(String title) {
+    final lower = title.toLowerCase();
+    if (lower.contains('coffee') || lower.contains('starbucks') || lower.contains('food') || lower.contains('burger') || lower.contains('pizza') || lower.contains('dinner') || lower.contains('lunch')) {
+      if (_selectedCategory != 'Food & Dining') {
+        setState(() {
+          _selectedCategory = 'Food & Dining';
+          _categoryController.text = _selectedCategory;
+        });
+      }
+    } else if (lower.contains('uber') || lower.contains('lyft') || lower.contains('bus') || lower.contains('train') || lower.contains('gas') || lower.contains('fuel')) {
+      if (_selectedCategory != 'Transportation') {
+        setState(() {
+          _selectedCategory = 'Transportation';
+          _categoryController.text = _selectedCategory;
+        });
+      }
+    } else if (lower.contains('salary') || lower.contains('paycheck') || lower.contains('payroll')) {
+      if (_selectedType != TransactionType.income || _selectedCategory != 'Salary & Wages') {
+        setState(() {
+          _selectedType = TransactionType.income;
+          _selectedCategory = 'Salary & Wages';
+          _categoryController.text = _selectedCategory;
+        });
+      }
+    } else if (lower.contains('rent') || lower.contains('electricity') || lower.contains('water') || lower.contains('bill') || lower.contains('internet')) {
+      if (_selectedCategory != 'Bills & Utilities') {
+        setState(() {
+          _selectedCategory = 'Bills & Utilities';
+          _categoryController.text = _selectedCategory;
+        });
+      }
+    }
+  }
+
   void _submit() {
     final String title = _titleController.text.trim();
     final double? amount = double.tryParse(_amountController.text.trim());
     final String category = _categoryController.text.trim();
 
     if (title.isEmpty || amount == null || amount <= 0 || category.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill out all required fields with a valid amount.'),
-          backgroundColor: AppColors.expenseRed,
-        ),
+      FeedbackToast.show(
+        context,
+        message: 'Please fill out all required fields with a valid amount.',
+        isSuccess: false,
       );
       return;
     }
@@ -137,6 +173,11 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
     );
 
     widget.onSubmit(transaction);
+    FeedbackToast.show(
+      context,
+      message: 'Transaction recorded cleanly to ledger.',
+      isSuccess: true,
+    );
     Navigator.of(context).pop();
   }
 
@@ -274,7 +315,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
             const SizedBox(height: AppSpacing.md),
 
             // Target Wallet Selector
-            Text('SELECT TARGET WALLET', style: AppTypography.sectionLabel(isDark)),
+            Text('TARGET WALLET', style: AppTypography.sectionLabel(isDark)),
             const SizedBox(height: AppSpacing.xs),
             if (_accounts.isNotEmpty)
               Wrap(
@@ -298,7 +339,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
               const AppChip(label: 'Cash Wallet', isSelected: true),
             const SizedBox(height: AppSpacing.md),
 
-            // Amount Input
+            // Amount Input & Preset Chips
             AppTextField(
               controller: _amountController,
               label: 'TRANSACTION AMOUNT',
@@ -306,14 +347,35 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
               isCurrency: true,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
             ),
+            const SizedBox(height: AppSpacing.xs),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [5, 10, 20, 50, 100, 500].map((amt) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: AppChip(
+                      label: '\$$amt',
+                      isSelected: _amountController.text == amt.toString(),
+                      onTap: () {
+                        setState(() {
+                          _amountController.text = amt.toString();
+                        });
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
             const SizedBox(height: AppSpacing.md),
 
             // Title Input
             AppTextField(
               controller: _titleController,
               label: 'TITLE / MERCHANT',
-              hint: 'e.g. Salary Credit, Starbucks, Client Payment',
+              hint: 'e.g. Coffee, Uber, Salary, Rent',
               prefixIcon: Icons.title_rounded,
+              onChanged: _onTitleChanged,
             ),
             const SizedBox(height: AppSpacing.md),
 

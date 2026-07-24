@@ -5,11 +5,13 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/empty_state_widget.dart';
+import '../../../core/widgets/financial_knowledge_sheet.dart';
+import '../../../core/widgets/scan_first_components.dart';
 import '../data/goal_repository.dart';
 import '../domain/goal_model.dart';
 import 'add_goal_dialog.dart';
 
-/// Financial Savings Goals Screen.
+/// Scan-First & Mobile-First Savings Goals Screen (320px+ viewports).
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
 
@@ -82,16 +84,45 @@ class _GoalsScreenState extends State<GoalsScreen> {
             );
           }
 
+          final totalTarget = goals.fold(0.0, (sum, g) => sum + g.targetAmount);
+          final totalSaved = goals.fold(0.0, (sum, g) => sum + g.currentAmount);
+
           return ListView(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
             children: [
-              Text('ACTIVE SAVINGS GOALS', style: AppTypography.sectionLabel(isDark)),
+              // TOP SCAN-FIRST SAVINGS SUMMARY
+              Row(
+                children: [
+                  Expanded(
+                    child: AppScannableKpiTile(
+                      title: 'Total Saved',
+                      value: AppFormatters.currency(totalSaved),
+                      statusPill: 'SAVED',
+                      statusColor: AppColors.incomeGreen,
+                      subtitle: 'Current Balance',
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: AppScannableKpiTile(
+                      title: 'Total Target',
+                      value: AppFormatters.currency(totalTarget),
+                      statusPill: 'GOAL TARGET',
+                      statusColor: AppColors.primaryBlue,
+                      subtitle: 'Cumulative Target',
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: AppSpacing.sm),
+
+              Text('ACTIVE SAVINGS GOALS', style: AppTypography.sectionLabel(isDark)),
+              const SizedBox(height: AppSpacing.xs),
               ...goals.map((g) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                 child: _buildGoalCard(g, isDark),
               )),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: 80),
             ],
           );
         },
@@ -103,98 +134,142 @@ class _GoalsScreenState extends State<GoalsScreen> {
     final targetDt = DateTime.fromMillisecondsSinceEpoch(goal.targetDateMilliseconds);
     final daysRemaining = targetDt.difference(DateTime.now()).inDays;
     final bool isOverdue = goal.isOverdue;
+    final double remainingAmount = goal.targetAmount - goal.currentAmount;
+    final int monthsLeft = (daysRemaining / 30).ceil().clamp(1, 120);
+    final double requiredMonthly = remainingAmount > 0 ? (remainingAmount / monthsLeft) : 0.0;
+    final pctInt = (goal.progressPercentage * 100).toInt();
 
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: (isOverdue ? AppColors.expenseRed : AppColors.primaryBlue).withValues(alpha: 0.12),
-                      borderRadius: AppRadius.borderSm,
-                    ),
-                    child: Icon(
-                      isOverdue ? Icons.warning_amber_rounded : Icons.flag_rounded,
-                      color: isOverdue ? AppColors.expenseRed : AppColors.primaryBlue,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      onTap: () {
+        FinancialKnowledgeSheet.showForMetric(
+          context,
+          type: FinancialMetricType.goalSavings,
+          metricValue: AppFormatters.currency(goal.targetAmount),
+          customTitle: '${goal.title} Savings Goal',
+          customSources: [
+            'Current Saved: ${AppFormatters.currency(goal.currentAmount)}',
+            'Remaining Target: ${AppFormatters.currency(remainingAmount)}',
+            'Target Completion Date: ${AppFormatters.dateShort(targetDt)}',
+            'Months Remaining: $monthsLeft months',
+            'Required Monthly Deposit: ${AppFormatters.currency(requiredMonthly)}/month',
+          ],
+        );
+      },
+      child: AppCard(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. TOP ROW: Goal Title & Status Badge
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
                     children: [
-                      Text(
-                        goal.title,
-                        style: AppTypography.titleLarge(isDark),
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: (isOverdue ? AppColors.expenseRed : AppColors.primaryBlue).withValues(alpha: 0.12),
+                          borderRadius: AppRadius.borderSm,
+                        ),
+                        child: Icon(
+                          isOverdue ? Icons.warning_amber_rounded : Icons.flag_rounded,
+                          color: isOverdue ? AppColors.expenseRed : AppColors.primaryBlue,
+                          size: 16,
+                        ),
                       ),
-                      Text(
-                        isOverdue
-                            ? 'Target: ${AppFormatters.dateShort(targetDt)} (OVERDUE)'
-                            : 'Target: ${AppFormatters.dateShort(targetDt)} (${daysRemaining.clamp(0, 3650)} days left)',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: isOverdue ? FontWeight.w600 : FontWeight.w400,
-                          color: isOverdue ? AppColors.expenseRed : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          goal.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                          ),
                         ),
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(width: 6),
+                AppStatusBadge(
+                  label: isOverdue ? 'OVERDUE' : (pctInt >= 100 ? 'COMPLETED' : '$pctInt% DONE'),
+                  color: isOverdue ? AppColors.expenseRed : (pctInt >= 100 ? AppColors.incomeGreen : AppColors.primaryBlue),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+
+            // 2. PRIMARY VALUE: Saved vs Target (FittedBox for 320px)
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    AppFormatters.currency(goal.currentAmount),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                      color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '/ ${AppFormatters.currency(goal.targetAmount)} TARGET',
+                    style: AppTypography.sectionLabel(isDark).copyWith(fontSize: 9.5, letterSpacing: 0.6),
+                  ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: (isOverdue ? AppColors.expenseRed : AppColors.primaryBlue).withValues(alpha: 0.12),
-                  borderRadius: AppRadius.borderXs,
-                ),
-                child: Text(
-                  isOverdue ? 'OVERDUE' : '${(goal.progressPercentage * 100).toStringAsFixed(0)}%',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isOverdue ? AppColors.expenseRed : AppColors.primaryBlue,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
+            ),
+            const SizedBox(height: AppSpacing.xs),
 
-          // Progress Bar
-          ClipRRect(
-            borderRadius: AppRadius.borderPill,
-            child: LinearProgressIndicator(
-              value: goal.progressPercentage,
-              minHeight: 6,
-              backgroundColor: isDark ? AppColors.darkSurfaceLight : AppColors.lightSurfaceSecondary,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                isOverdue ? AppColors.expenseRed : AppColors.incomeGreen,
+            // 3. PROGRESS BAR
+            ClipRRect(
+              borderRadius: AppRadius.borderPill,
+              child: LinearProgressIndicator(
+                value: goal.progressPercentage,
+                minHeight: 6,
+                backgroundColor: isDark ? AppColors.darkSurfaceLight : AppColors.lightSurfaceSecondary,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isOverdue ? AppColors.expenseRed : AppColors.incomeGreen,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.xs),
 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Saved: ${AppFormatters.currency(goal.currentAmount)}',
-                style: AppTypography.titleMedium(isDark),
-              ),
-              Text(
-                'Target: ${AppFormatters.currency(goal.targetAmount)}',
-                style: AppTypography.labelSmall(isDark),
-              ),
-            ],
-          ),
-        ],
+            // 4. KEYWORD METRIC CHIPS
+            Row(
+              children: [
+                Expanded(
+                  child: AppKeywordMetricTile(
+                    keyword: 'REMAINING NEEDED',
+                    value: AppFormatters.currency(remainingAmount.clamp(0.0, double.infinity)),
+                    color: AppColors.warningOrange,
+                    icon: Icons.savings_outlined,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: AppKeywordMetricTile(
+                    keyword: 'TIME REMAINING',
+                    value: isOverdue ? 'Overdue' : '$monthsLeft Mo Left',
+                    color: isOverdue ? AppColors.expenseRed : AppColors.primaryBlue,
+                    icon: Icons.calendar_today_outlined,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

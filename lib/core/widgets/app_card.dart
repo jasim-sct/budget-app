@@ -1,74 +1,82 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
+import 'app_micro_pressable.dart';
 
-/// Reusable card component with consistent padding, radius, border, and elevation.
+/// Unified card component with optional left accent edge.
+/// Single card language across the entire application.
 class AppCard extends StatelessWidget {
   final Widget child;
-  final EdgeInsetsGeometry? padding;
-  final EdgeInsetsGeometry? margin;
+  final EdgeInsets? padding;
+  final Color? accentColor;
   final Color? backgroundColor;
-  final Gradient? gradient;
-  final Border? border;
   final BorderRadius? borderRadius;
-  final List<BoxShadow>? boxShadow;
   final VoidCallback? onTap;
-  final VoidCallback? onLongPress;
+  final bool elevated;
 
   const AppCard({
     super.key,
     required this.child,
     this.padding,
-    this.margin,
+    this.accentColor,
     this.backgroundColor,
-    this.gradient,
-    this.border,
     this.borderRadius,
-    this.boxShadow,
     this.onTap,
-    this.onLongPress,
+    this.elevated = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final defaultBg = backgroundColor ?? (isDark ? AppColors.darkCardBg : AppColors.lightCardBg);
-    final defaultBorder = border ?? Border.all(
-      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-      width: 1,
-    );
-    final defaultRadius = borderRadius ?? AppRadius.borderMd;
 
-    Widget container = Container(
-      margin: margin,
-      padding: padding ?? const EdgeInsets.all(AppSpacing.md),
+    final effectiveBg = backgroundColor ??
+        (isDark
+            ? (elevated ? AppColors.darkSurfaceElevated : AppColors.darkCardBg)
+            : (elevated ? AppColors.lightSurfaceElevated : AppColors.lightCardBg));
+
+    final effectiveRadius = borderRadius ?? AppRadius.borderMd;
+
+    final card = Container(
+      clipBehavior: (accentColor != null || borderRadius != null) ? Clip.antiAlias : Clip.none,
       decoration: BoxDecoration(
-        color: gradient == null ? defaultBg : null,
-        gradient: gradient,
-        borderRadius: defaultRadius,
-        border: defaultBorder,
-        boxShadow: boxShadow ?? (isDark ? AppShadows.none : AppShadows.sm),
+        color: effectiveBg,
+        borderRadius: effectiveRadius,
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          width: 1,
+        ),
+        boxShadow: elevated ? AppShadows.sm : AppShadows.none,
       ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: defaultRadius,
-        child: child,
-      ),
+      child: accentColor != null
+          ? IntrinsicHeight(
+              child: Row(
+                children: [
+                  Container(
+                    width: 3,
+                    color: accentColor,
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: padding ?? const EdgeInsets.all(AppSpacing.cardInner),
+                      child: child,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : Padding(
+              padding: padding ?? const EdgeInsets.all(AppSpacing.cardInner),
+              child: child,
+            ),
     );
 
-    if (onTap != null || onLongPress != null) {
-      return Material(
-        color: Colors.transparent,
-        borderRadius: defaultRadius,
-        child: InkWell(
-          onTap: onTap,
-          onLongPress: onLongPress,
-          borderRadius: defaultRadius,
-          child: container,
-        ),
+    if (onTap != null) {
+      return AppMicroPressable(
+        onTap: onTap,
+        child: card,
       );
     }
 
-    return container;
+    return card;
   }
 }

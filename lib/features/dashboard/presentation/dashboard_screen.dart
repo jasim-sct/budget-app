@@ -1,361 +1,558 @@
 import 'package:flutter/material.dart';
 import '../../../core/services/financial_calculation_engine.dart';
 import '../../../core/services/financial_metrics.dart';
+import '../../../core/services/intent_decision_engine.dart';
+import '../../../core/services/time_context_engine.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/widgets/glass/glass_card.dart';
-import '../../../core/widgets/month_selector_bar.dart';
-import '../../categories/presentation/categories_screen.dart';
-import '../../reports/presentation/reports_screen.dart';
+import '../../../core/widgets/animated_number_text.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/calculation_explanation_modal.dart';
+import '../../../core/widgets/intent_card.dart';
+import '../../settings/presentation/settings_screen.dart';
 import '../../transactions/data/transaction_repository.dart';
+import '../../transactions/presentation/widgets/transaction_item_tile.dart';
 
-/// VisionOS Ultra-Premium Glassmorphic Financial Overview Header.
-/// Features holographic chip styling, quick action glass pill buttons, and real-time Level 10 calculation engine metrics.
-class DashboardHeader extends StatefulWidget {
+/// Intent-Driven Dashboard — answers "How am I doing today?"
+/// Single hero metric + insights + month snapshot + recent activity.
+class DashboardScreen extends StatefulWidget {
   final TransactionRepository repository;
+  final VoidCallback? onNavigateToLedger;
+  final VoidCallback? onNavigateToWallets;
+  final VoidCallback? onNavigateToBudgets;
+  final VoidCallback? onNavigateToAnalytics;
 
-  const DashboardHeader({
+  const DashboardScreen({
     super.key,
     required this.repository,
+    this.onNavigateToLedger,
+    this.onNavigateToWallets,
+    this.onNavigateToBudgets,
+    this.onNavigateToAnalytics,
   });
 
   @override
-  State<DashboardHeader> createState() => _DashboardHeaderState();
+  State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardHeaderState extends State<DashboardHeader> {
+class _DashboardScreenState extends State<DashboardScreen> {
   bool _hideBalance = false;
+  bool _isEnvelopeExpanded = false;
+  IntentDecisionState? _intentState;
+  late TimeContextState _timeContext;
+
+  @override
+  void initState() {
+    super.initState();
+    _timeContext = TimeContextEngine.getCurrentContext();
+    _loadIntentState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.repository.loadInitialData();
+    });
+  }
+
+  Future<void> _loadIntentState() async {
+    final state = await IntentDecisionEngine.evaluateCurrentIntent();
+    if (mounted) {
+      setState(() {
+        _intentState = state;
+      });
+    }
+  }
+
+  void _showCalculationExplanation() {
+    final details = _intentState?.envelopeDetails ?? [];
+    CalculationExplanationModal.show(
+      context,
+      title: 'Daily Safe Spending Calculation',
+      metricValue: AppFormatters.currency(_intentState?.dailySafeSpend ?? 0.0),
+      formulaDescription: 'Daily Safe Spending is calculated exclusively as the sum of remaining envelope balances divided by remaining days in each budget period.',
+      latexFormula: r'Daily Limit = \sum (Envelope Remaining \div Days Left)',
+      envelopeDetails: details,
+      dateRange: '${AppFormatters.date(DateTime.now())} - Month End',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final secondaryColor = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
 
-    return ValueListenableBuilder<FinancialMetrics>(
-      valueListenable: FinancialCalculationEngine.instance.metricsNotifier,
-      builder: (context, metrics, _) {
-        final savings = (metrics.totalIncome - metrics.totalExpense).clamp(0.0, double.infinity);
+    return Scaffold(
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            await widget.repository.loadInitialData();
+            await FinancialCalculationEngine.instance.recalculate();
+            await _loadIntentState();
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: AppSpacing.sm),
 
-        return Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Global Month Selector Bar
-              const MonthSelectorBar(),
-              const SizedBox(height: AppSpacing.sm),
-
-              // Welcome Profile Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          gradient: AppColors.neonMeshGradient,
-                          shape: BoxShape.circle,
-                          boxShadow: AppShadows.neonGlow(AppColors.primaryEmerald),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            'AM',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Column(
+                // ── Header: Greeting + Actions ──
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'FINANCIAL OPERATING SYSTEM',
-                            style: AppTypography.labelSmall(isDark),
+                            _timeContext.greeting,
+                            style: AppTypography.caption(isDark).copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
+                          const SizedBox(height: 1),
                           Text(
-                            'Alex Morgan',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                            'Alex',
+                            style: AppTypography.headline(isDark),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _HeaderIconButton(
+                          icon: _hideBalance ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          onTap: () => setState(() => _hideBalance = !_hideBalance),
+                          isDark: isDark,
+                        ),
+                        const SizedBox(width: 4),
+                        _HeaderIconButton(
+                          icon: Icons.settings_outlined,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => SettingsScreen(repository: widget.repository)),
+                            );
+                          },
+                          isDark: isDark,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: AppSpacing.sectionGap),
+
+                // ── Financial Pulse Card ──
+                AppCard(
+                  padding: const EdgeInsets.all(AppSpacing.sectionGap),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Label
+                      Row(
+                        children: [
+                          Text(
+                            'Today\'s safe spend',
+                            style: AppTypography.insightLabel(isDark).copyWith(
+                              letterSpacing: 0.3,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (_intentState != null)
+                            Text(
+                              '${_intentState!.remainingDays} days left',
+                              style: AppTypography.caption(isDark).copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+
+                      // Hero number
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: _hideBalance
+                            ? Text(
+                                '\$••••',
+                                style: AppTypography.financialHero(isDark),
+                              )
+                            : AnimatedNumberText(
+                                value: _intentState?.dailySafeSpend ?? 0.0,
+                                style: AppTypography.financialHero(isDark),
+                              ),
+                      ),
+
+                      const SizedBox(height: AppSpacing.md),
+
+                      // Inline metrics: Remaining | Budget used
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _InlineMetric(
+                              label: 'Remaining',
+                              value: _hideBalance
+                                  ? '\$••••'
+                                  : AppFormatters.currency(_intentState?.remainingBudget ?? 0.0),
+                              color: AppColors.incomeGreen,
+                              isDark: isDark,
+                            ),
+                          ),
+                          Container(
+                            width: 1,
+                            height: 28,
+                            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                          ),
+                          Expanded(
+                            child: _InlineMetric(
+                              label: 'Days left',
+                              value: '${_intentState?.remainingDays ?? 0}',
+                              color: AppColors.primaryBlue,
+                              isDark: isDark,
                             ),
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          gradient: AppColors.violetGradient,
-                          borderRadius: AppRadius.borderPill,
-                          boxShadow: AppShadows.glow(AppColors.accentViolet),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.star_rounded, size: 14, color: Colors.white),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Score: ${metrics.financialScore}',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white),
+
+                      const SizedBox(height: AppSpacing.sm),
+
+                      // Progressive disclosure
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          GestureDetector(
+                            onTap: _showCalculationExplanation,
+                            child: Text(
+                              'How is this calculated?',
+                              style: AppTypography.actionText(isDark).copyWith(fontSize: 11.5),
                             ),
-                          ],
-                        ),
+                          ),
+                          GestureDetector(
+                            onTap: () => setState(() => _isEnvelopeExpanded = !_isEnvelopeExpanded),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _isEnvelopeExpanded ? 'Hide' : 'Envelopes',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: secondaryColor,
+                                  ),
+                                ),
+                                Icon(
+                                  _isEnvelopeExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                                  size: 16,
+                                  color: secondaryColor,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        icon: Icon(
-                          _hideBalance ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+
+                      // Expandable envelope breakdown
+                      if (_isEnvelopeExpanded && _intentState != null) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        Divider(
+                          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                          height: 1,
                         ),
-                        onPressed: () => setState(() => _hideBalance = !_hideBalance),
-                      ),
+                        const SizedBox(height: AppSpacing.sm),
+                        ..._intentState!.envelopeDetails.map((detail) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        detail.category,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: AppTypography.titleMedium(isDark).copyWith(fontSize: 12.5),
+                                      ),
+                                      Text(
+                                        '${AppFormatters.currency(detail.remaining)} left · ${detail.daysRemaining}d',
+                                        style: AppTypography.caption(isDark).copyWith(fontSize: 10.5),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                  '${AppFormatters.currency(detail.dailyLimit)}/day',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.incomeGreen,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
                     ],
                   ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.lg),
+                ),
 
-              // Credit Card Style Holographic VisionOS Glass Card
-              GlassCard(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                gradient: isDark ? AppColors.cardGradientDark : AppColors.cardGradientLight,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'TOTAL LIQUID NET WORTH',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.2,
-                            color: Color(0xFF94A3B8),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.18),
-                            borderRadius: AppRadius.borderPill,
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.35), width: 1),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.lock_outline_rounded, size: 12, color: AppColors.primaryEmerald),
-                              SizedBox(width: 4),
-                              Text(
-                                'SQLite Vault v3',
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      _hideBalance ? '\$••••••••' : AppFormatters.currency(metrics.netWorth),
-                      style: const TextStyle(
-                        fontSize: 34,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.8,
-                        color: Colors.white,
+                const SizedBox(height: AppSpacing.sectionGap),
+
+                // ── Insights ──
+                if (_intentState != null && _intentState!.decisionCards.isNotEmpty) ...[
+                  Text(
+                    'Insights',
+                    style: AppTypography.insightLabel(isDark),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  ..._intentState!.decisionCards.map((card) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: IntentCard(
+                        cardData: card,
+                        onActionTap: () {
+                          if (card.id.startsWith('overspend_') || card.id.startsWith('risk_')) {
+                            if (widget.onNavigateToBudgets != null) widget.onNavigateToBudgets!();
+                          } else {
+                            if (widget.onNavigateToLedger != null) widget.onNavigateToLedger!();
+                          }
+                        },
                       ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
+                    );
+                  }),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
 
-                    // Metrics Trio Row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildMetricItem(
-                            label: 'Inflow',
-                            amount: metrics.totalIncome,
+                // ── Month Snapshot ──
+                ValueListenableBuilder<FinancialMetrics>(
+                  valueListenable: FinancialCalculationEngine.instance.metricsNotifier,
+                  builder: (context, metrics, _) {
+                    return AppCard(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.cardInner,
+                        vertical: AppSpacing.sm + 2,
+                      ),
+                      child: Row(
+                        children: [
+                          _SnapshotMetric(
+                            label: 'Income',
+                            value: _hideBalance ? '••••' : AppFormatters.currency(metrics.totalIncome),
                             color: AppColors.incomeGreen,
-                            icon: Icons.arrow_downward_rounded,
-                            hidden: _hideBalance,
+                            isDark: isDark,
                           ),
-                        ),
-                        Container(width: 1, height: 34, color: Colors.white.withValues(alpha: 0.18)),
-                        Expanded(
-                          child: _buildMetricItem(
-                            label: 'Outflow',
-                            amount: metrics.totalExpense,
+                          _SnapshotDivider(isDark: isDark),
+                          _SnapshotMetric(
+                            label: 'Expense',
+                            value: _hideBalance ? '••••' : AppFormatters.currency(metrics.totalExpense),
                             color: AppColors.expenseRed,
-                            icon: Icons.arrow_upward_rounded,
-                            hidden: _hideBalance,
+                            isDark: isDark,
                           ),
-                        ),
-                        Container(width: 1, height: 34, color: Colors.white.withValues(alpha: 0.18)),
-                        Expanded(
-                          child: _buildMetricItem(
-                            label: 'Saved',
-                            amount: savings,
-                            color: AppColors.accentViolet,
-                            icon: Icons.savings_outlined,
-                            hidden: _hideBalance,
+                          _SnapshotDivider(isDark: isDark),
+                          _SnapshotMetric(
+                            label: 'Net',
+                            value: _hideBalance ? '••••' : AppFormatters.currency(metrics.netCashFlow),
+                            color: metrics.netCashFlow >= 0 ? AppColors.incomeGreen : AppColors.expenseRed,
+                            isDark: isDark,
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    );
+                  },
                 ),
-              ),
 
-              const SizedBox(height: AppSpacing.md),
-              // Quick Actions Bar
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildQuickActionButton(
-                    icon: Icons.category_outlined,
-                    label: 'Categories',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const CategoriesScreen()),
-                      );
-                    },
-                    isDark: isDark,
-                  ),
-                  _buildQuickActionButton(
-                    icon: Icons.receipt_long_outlined,
-                    label: 'Statements',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const ReportsScreen()),
-                      );
-                    },
-                    isDark: isDark,
-                  ),
-                  _buildQuickActionButton(
-                    icon: Icons.trending_up_rounded,
-                    label: 'Analytics',
-                    onTap: () {},
-                    isDark: isDark,
-                  ),
-                ],
-              ),
+                const SizedBox(height: AppSpacing.sectionGap),
 
-              const SizedBox(height: AppSpacing.md),
-              // Automated Level 10 Engine Insight Banner
-              GlassCard(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Row(
+                // ── Recent Activity ──
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryEmerald.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.auto_awesome_rounded, color: AppColors.primaryEmerald, size: 20),
+                    Text(
+                      'Recent activity',
+                      style: AppTypography.insightLabel(isDark),
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
+                    GestureDetector(
+                      onTap: widget.onNavigateToLedger,
                       child: Text(
-                        metrics.totalExpense > 0
-                            ? 'Engine Insight: ${metrics.topCategoryName} is top spend (${metrics.savingsRate.toStringAsFixed(1)}% savings rate).'
-                            : 'Engine Insight: Zero outflows logged. Outstanding cash retention!',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                        ),
+                        'See all',
+                        style: AppTypography.actionText(isDark).copyWith(fontSize: 12),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+                const SizedBox(height: AppSpacing.sm),
 
-  Widget _buildQuickActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    required bool isDark,
-  }) {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-        child: GlassCard(
-          onTap: onTap,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Column(
-            children: [
-              Icon(icon, color: AppColors.primaryEmerald, size: 20),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                ListenableBuilder(
+                  listenable: widget.repository.stateNotifier,
+                  builder: (context, _) {
+                    final txs = widget.repository.stateNotifier.value.transactions;
+                    if (txs.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                        child: Center(
+                          child: Text(
+                            'No transactions yet',
+                            style: AppTypography.bodyMedium(isDark),
+                          ),
+                        ),
+                      );
+                    }
+                    final recentList = txs.take(5).toList();
+                    return Column(
+                      children: recentList.map((tx) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                          child: TransactionItemTile(
+                            transaction: tx,
+                            onTap: () {},
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  },
                 ),
-              ),
-            ],
+
+                // Bottom safe spacing
+                const SizedBox(height: AppSpacing.xl),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildMetricItem({
-    required String label,
-    required double amount,
-    required Color color,
-    required IconData icon,
-    required bool hidden,
-  }) {
+// ── Private Helper Widgets ──
+
+class _HeaderIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isDark;
+
+  const _HeaderIconButton({
+    required this.icon,
+    required this.onTap,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkSurfaceElevated : AppColors.lightSurfaceSecondary,
+          borderRadius: AppRadius.borderSm,
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+        ),
+      ),
+    );
+  }
+}
+
+class _InlineMetric extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final bool isDark;
+
+  const _InlineMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 12, color: color),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF94A3B8),
-                ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: color,
               ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            hidden ? '\$•••' : AppFormatters.currency(amount),
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
             ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            label,
+            style: AppTypography.caption(isDark).copyWith(fontSize: 10.5),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SnapshotMetric extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final bool isDark;
+
+  const _SnapshotMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: AppTypography.caption(isDark).copyWith(fontSize: 10),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SnapshotDivider extends StatelessWidget {
+  final bool isDark;
+  const _SnapshotDivider({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 24,
+      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
     );
   }
 }

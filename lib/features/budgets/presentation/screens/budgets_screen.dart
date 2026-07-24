@@ -2,20 +2,18 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/month_selector_bar.dart';
 import '../../../goals/presentation/goals_screen.dart';
+import '../../../reports/presentation/reports_screen.dart';
 import '../../application/budgets_controller.dart';
 import '../../domain/models/budget_period.dart';
 import '../widgets/add_budget_bottom_sheet.dart';
 import '../widgets/budget_envelope_card.dart';
-import '../widgets/budget_health_card.dart';
-import '../widgets/budget_history_comparison_widget.dart';
-import '../widgets/budget_pacing_card.dart';
-import '../widgets/budget_pacing_chart.dart';
-import '../widgets/budget_pacing_hero_gauge.dart';
 
-/// Commercial-Grade Split-Wise Enterprise Financial Budgeting Dashboard.
+/// Plan Screen — "How am I spending?" (Budgets + Goals unified)
 class BudgetsScreen extends StatefulWidget {
   final BudgetsController controller;
 
@@ -55,7 +53,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Enterprise Budget Engine'),
+        title: const Text('Plan'),
         actions: [
           IconButton(
             icon: const Icon(Icons.flag_outlined, size: 20),
@@ -64,6 +62,16 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const GoalsScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.table_chart_outlined, size: 20),
+            tooltip: 'Reports',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ReportsScreen()),
               );
             },
           ),
@@ -85,142 +93,183 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
 
           final double totalSpent = state.summaries.fold(0.0, (sum, s) => sum + s.spent);
           final double totalLimit = state.summaries.fold(0.0, (sum, s) => sum + s.metrics.allocation);
-          final double overallRatio = totalLimit > 0 ? (totalSpent / totalLimit) : 0.0;
-          final int budgetHealthScore = ((1.0 - overallRatio.clamp(0.0, 1.0)) * 100).toInt();
+          final double overallRatio = totalLimit > 0 ? (totalSpent / totalLimit).clamp(0.0, 1.5) : 0.0;
 
           return ListView(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.screenPadding,
+              vertical: AppSpacing.sm,
+            ),
             children: [
+              // Month selector
               const MonthSelectorBar(),
-              const SizedBox(height: AppSpacing.sm),
-
-              // 1. Period Selector Tabs (Daily, Weekly, Monthly, Yearly)
-              _buildPeriodSelectorTabs(state.selectedPeriod),
               const SizedBox(height: AppSpacing.md),
 
-              // 2. Period Comparison Analytics Card
-              if (state.comparisonMetrics != null) ...[
-                BudgetHistoryComparisonWidget(metrics: state.comparisonMetrics!),
-                const SizedBox(height: AppSpacing.md),
+              // Period tabs
+              _buildPeriodTabs(state.selectedPeriod),
+              const SizedBox(height: AppSpacing.sectionGap),
+
+              // Budget health summary card
+              if (state.summaries.isNotEmpty) ...[
+                _BudgetHealthSummary(
+                  totalSpent: totalSpent,
+                  totalLimit: totalLimit,
+                  ratio: overallRatio,
+                  isDark: isDark,
+                ),
+                const SizedBox(height: AppSpacing.sectionGap),
               ],
 
-              // 3. Radial Arc Hero Gauge & Allowance HUD
-              BudgetPacingHeroGauge(pacing: state.overallPacing),
-              const SizedBox(height: AppSpacing.md),
-
-              // 4. Dynamic Spending Trend & Projection Corridor Chart
-              BudgetPacingChart(
-                pacing: state.overallPacing,
-                dailyCumulativeSpent: state.dailyCumulativeSpent,
-              ),
-              const SizedBox(height: AppSpacing.md),
-
-              // 5. 6-Tile Key Pacing Metrics Grid
-              BudgetPacingCard(pacing: state.overallPacing),
-              const SizedBox(height: AppSpacing.md),
-
-              // 6. Overall Budget Health Summary Card
-              BudgetHealthCard(
-                totalSpent: totalSpent,
-                totalLimit: totalLimit,
-                healthScore: budgetHealthScore,
-                overallRatio: overallRatio,
-              ),
-
-              const SizedBox(height: AppSpacing.lg),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${state.selectedPeriod.label.toUpperCase()} BUDGET CATEGORY ENVELOPES',
-                    style: AppTypography.sectionLabel(isDark),
-                  ),
-                  Text(
-                    '${state.summaries.length} Categories',
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
-                  ),
-                ],
+              // Envelope list
+              Text(
+                'BUDGETS',
+                style: AppTypography.insightLabel(isDark),
               ),
               const SizedBox(height: AppSpacing.sm),
 
               if (state.summaries.isEmpty)
                 EmptyStateWidget(
                   icon: Icons.pie_chart_outline_rounded,
-                  title: 'No ${state.selectedPeriod.label} Budgets Set',
-                  description: 'Create budget limits to monitor your expense habits automatically.',
-                  actionLabel: 'Set Budget Limit',
+                  title: 'No budgets set',
+                  description: 'Create budget limits to track spending.',
+                  actionLabel: 'Add Budget',
                   onActionTap: _showAddBudgetModal,
                 )
               else
-                ...List.generate(state.summaries.length, (index) {
-                  final summary = state.summaries[index];
+                ...state.summaries.map((summary) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: BudgetEnvelopeCard(
-                      summary: summary,
-                      onActionCompleted: () {
-                        widget.controller.loadBudgets();
-                      },
-                    ),
+                    child: BudgetEnvelopeCard(summary: summary),
                   );
                 }),
-              const SizedBox(height: AppSpacing.xs),
+
+              const SizedBox(height: AppSpacing.xl),
             ],
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddBudgetModal,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Add Budget', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: AppColors.primaryBlue,
-      ),
     );
   }
 
-  Widget _buildPeriodSelectorTabs(BudgetPeriodType activePeriod) {
+  Widget _buildPeriodTabs(BudgetPeriodType selected) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.glassBorder),
+        color: isDark ? AppColors.darkSurfaceElevated : AppColors.lightSurfaceSecondary,
+        borderRadius: AppRadius.borderSm,
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          width: 1,
+        ),
       ),
       child: Row(
         children: BudgetPeriodType.values.map((period) {
-          final isSelected = period == activePeriod;
+          final isSelected = selected == period;
           return Expanded(
             child: GestureDetector(
               onTap: () => widget.controller.setPeriod(period),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 8),
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: isSelected ? AppColors.primaryBlue : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: AppColors.primaryBlue.withOpacity(0.4),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          )
-                        ]
-                      : null,
+                  borderRadius: AppRadius.borderXs,
                 ),
                 child: Text(
                   period.label,
-                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: isSelected ? Colors.white : AppColors.textSecondary,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    fontSize: 13,
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? Colors.white
+                        : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
                   ),
                 ),
               ),
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+/// Compact budget health summary with progress bar.
+class _BudgetHealthSummary extends StatelessWidget {
+  final double totalSpent;
+  final double totalLimit;
+  final double ratio;
+  final bool isDark;
+
+  const _BudgetHealthSummary({
+    required this.totalSpent,
+    required this.totalLimit,
+    required this.ratio,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color progressColor = ratio < 0.7
+        ? AppColors.incomeGreen
+        : ratio < 0.9
+            ? AppColors.warningOrange
+            : AppColors.expenseRed;
+
+    final percentUsed = (ratio * 100).clamp(0.0, 150.0);
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Overall Budget',
+                style: AppTypography.titleMedium(isDark),
+              ),
+              Text(
+                '${percentUsed.toStringAsFixed(0)}% used',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: progressColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Progress bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: ratio.clamp(0.0, 1.0),
+              backgroundColor: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              valueColor: AlwaysStoppedAnimation(progressColor),
+              minHeight: 6,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Spent ${AppFormatters.currency(totalSpent)}',
+                style: AppTypography.caption(isDark),
+              ),
+              Text(
+                'of ${AppFormatters.currency(totalLimit)}',
+                style: AppTypography.caption(isDark),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -5,6 +5,8 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../domain/models/budget_pacing_model.dart';
 
+import '../../../../core/widgets/financial_knowledge_sheet.dart';
+
 /// Dynamic Budget Pacing Summary Card.
 class BudgetPacingCard extends StatelessWidget {
   final BudgetPacingModel pacing;
@@ -46,7 +48,23 @@ class BudgetPacingCard extends StatelessWidget {
     final statusColor = _getStatusColor(pacing.pacingStatus);
     final statusIcon = _getStatusIcon(pacing.pacingStatus);
 
-    return Container(
+    return GestureDetector(
+      onTap: () {
+        FinancialKnowledgeSheet.showForMetric(
+          context,
+          type: FinancialMetricType.dailySafeSpending,
+          metricValue: '${AppFormatters.currency(pacing.dailyBudgetTarget)}/day',
+          customTitle: 'Dynamic Budget Pacing',
+          customSources: [
+            'Current Daily Target: ${AppFormatters.currency(pacing.dailyBudgetTarget)}/day',
+            'Today\'s Actual Spending: ${AppFormatters.currency(pacing.todaySpent)}',
+            'Estimated Month-End Spending: ${AppFormatters.currency(pacing.projectedMonthEndSpent)}',
+            'Variance to Budget: ${AppFormatters.currency(pacing.varianceAmount)}',
+            'Pacing Consumption Ratio: ${(pacing.pacingPercentage).toStringAsFixed(1)}%',
+          ],
+        );
+      },
+      child: Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkCardBg : AppColors.lightCardBg,
         borderRadius: AppRadius.borderMd,
@@ -242,6 +260,7 @@ class BudgetPacingCard extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 

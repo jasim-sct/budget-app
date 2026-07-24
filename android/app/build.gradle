@@ -6,8 +6,7 @@ plugins {
 
 android {
     namespace "com.example.budget_lite"
-    compileSdk 34
-    ndkVersion flutter.ndkVersion
+    compileSdk 36
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -24,30 +23,13 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0.0"
-
-        // Optimize native library loading on 1GB RAM devices
-        ndk {
-            abiFilters 'armeabi-v7a', 'arm64-v8a'
-        }
-    }
-
-    // Split APKs by ABI to minimize binary size on slow eMMC storage
-    splits {
-        abi {
-            enable true
-            reset()
-            include 'armeabi-v7a', 'arm64-v8a'
-            universalApk false
-        }
     }
 
     buildTypes {
         release {
             signingConfig signingConfigs.debug
-            // Enable R8 code shrinking and resource minification
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            minifyEnabled false
+            shrinkResources false
         }
     }
 }

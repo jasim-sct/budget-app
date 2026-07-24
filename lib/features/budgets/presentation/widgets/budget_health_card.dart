@@ -5,6 +5,8 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/animated_circular_progress.dart';
 
+import '../../../../core/widgets/financial_knowledge_sheet.dart';
+
 /// Budget Health Summary Card component.
 class BudgetHealthCard extends StatelessWidget {
   final double totalSpent;
@@ -23,8 +25,24 @@ class BudgetHealthCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final double remaining = totalLimit - totalSpent;
 
-    return Container(
+    return GestureDetector(
+      onTap: () {
+        FinancialKnowledgeSheet.showForMetric(
+          context,
+          type: FinancialMetricType.budgetRemaining,
+          metricValue: AppFormatters.currency(remaining),
+          customTitle: 'Overall Budget Health & Remaining',
+          customSources: [
+            'Total Allocated Envelopes: ${AppFormatters.currency(totalLimit)}',
+            'Total Period Expenses: ${AppFormatters.currency(totalSpent)}',
+            'Budget Health Score: $healthScore / 100',
+            'Envelope Consumption Ratio: ${(overallRatio * 100).toStringAsFixed(1)}%',
+          ],
+        );
+      },
+      child: Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkCardBg : AppColors.lightCardBg,
         borderRadius: AppRadius.borderMd,
@@ -68,6 +86,7 @@ class BudgetHealthCard extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }

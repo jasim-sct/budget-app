@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
-/// Centralized Typography Scale.
-/// Limited to 4 weights: w400 (regular), w500 (medium), w600 (semibold), w700 (bold).
+/// Precision Typography Scale — trust-first, scannable hierarchy.
+/// 6 distinct levels: hero → headline → title → body → caption → label.
 abstract class AppTypography {
+  /// 36px bold – primary financial hero numbers.
+  static TextStyle financialHero(bool isDark) => TextStyle(
+        fontSize: 36,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -1.2,
+        height: 1.15,
+        color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+      );
+
   /// 32px bold – hero numbers (balance, net worth).
   static TextStyle displayLarge(bool isDark) => TextStyle(
         fontSize: 32,
@@ -64,11 +73,28 @@ abstract class AppTypography {
         color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
       );
 
+  /// 14px semibold – inline action links and text buttons.
+  static TextStyle actionText(bool isDark) => TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        height: 1.35,
+        color: AppColors.primaryBlue,
+      );
+
   /// 12px regular – captions, timestamps, supporting info.
   static TextStyle caption(bool isDark) => TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w400,
         height: 1.35,
+        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+      );
+
+  /// 12px semibold uppercase – contextual metric labels.
+  static TextStyle insightLabel(bool isDark) => TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.8,
+        height: 1.3,
         color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
       );
 

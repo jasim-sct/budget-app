@@ -220,6 +220,38 @@ class _TransactionDetailModalState extends State<TransactionDetailModal> {
               ],
             ),
 
+            const SizedBox(height: AppSpacing.md),
+
+            // Financial Decision Context Card
+            AppCard(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('FINANCIAL DECISION IMPACT', style: AppTypography.sectionLabel(isDark)),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        isIncome ? Icons.account_balance_wallet_outlined : Icons.account_tree_outlined,
+                        size: 16,
+                        color: AppColors.primaryBlue,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          isIncome
+                              ? 'Credited ${AppFormatters.currency(tx.amount)} directly to ${tx.accountName ?? "Cash Wallet"}. Boosts net cash flow.'
+                              : 'Debited ${AppFormatters.currency(tx.amount)} from ${tx.accountName ?? "Cash Wallet"} under the "${tx.category}" envelope.',
+                          style: AppTypography.bodyMedium(isDark).copyWith(fontSize: 12, height: 1.4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
             const SizedBox(height: AppSpacing.lg),
 
             // Audit & Version History Timeline
