@@ -20,7 +20,7 @@ import '../domain/transaction_model.dart';
 class AddTransactionDialog extends StatefulWidget {
   final String? initialAccountId;
   final TransactionType? initialType;
-  final Function(TransactionModel) onSubmit;
+  final Future<void> Function(TransactionModel) onSubmit;
 
   const AddTransactionDialog({
     super.key,
@@ -148,7 +148,11 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
     }
   }
 
-  void _submit() {
+  bool _isSubmitting = false;
+
+  Future<void> _submit() async {
+    if (_isSubmitting) return;
+
     final String title = _titleController.text.trim();
     final double? amount = double.tryParse(_amountController.text.trim());
     final String category = _categoryController.text.trim();
@@ -172,13 +176,26 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
       accountName: _selectedAccountName ?? 'Cash Wallet',
     );
 
-    widget.onSubmit(transaction);
-    FeedbackToast.show(
-      context,
-      message: 'Transaction recorded cleanly to ledger.',
-      isSuccess: true,
-    );
-    Navigator.of(context).pop();
+    setState(() => _isSubmitting = true);
+    try {
+      await widget.onSubmit(transaction);
+      if (!mounted) return;
+      FeedbackToast.show(
+        context,
+        message: 'Transaction recorded cleanly to ledger.',
+        isSuccess: true,
+      );
+      Navigator.of(context).pop();
+    } catch (_) {
+      if (!mounted) return;
+      FeedbackToast.show(
+        context,
+        message: 'Could not save transaction. Please try again.',
+        isSuccess: false,
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   void _openAddCustomCategory() {

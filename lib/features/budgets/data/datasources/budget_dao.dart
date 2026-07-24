@@ -1,6 +1,8 @@
 import 'package:sqflite/sqflite.dart';
 import '../../../../core/constants/db_constants.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/database/database_helper.dart';
+import '../../../../core/services/budget_category_matcher.dart';
 import '../../../../core/state/month_selector_controller.dart';
 import '../../domain/models/budget_model.dart';
 import '../../domain/models/budget_pacing_model.dart';
@@ -11,11 +13,13 @@ import '../../domain/services/budget_status_engine.dart';
 class BudgetSpentSummary {
   final BudgetModel budget;
   final double spent;
+  final double todaySpent;
   final BudgetStatusMetrics metrics;
 
   const BudgetSpentSummary({
     required this.budget,
     required this.spent,
+    required this.todaySpent,
     required this.metrics,
   });
 
@@ -23,6 +27,13 @@ class BudgetSpentSummary {
   double get progressRatio => (metrics.progressPercentage / 100.0).clamp(0.0, 1.0);
   bool get isExceeded => metrics.isExceeded;
   bool get isNearAlert => metrics.status == BudgetStatusClassification.nearLimit;
+
+  /// Fixed daily plan − today's category spend (may be negative).
+  double get safeToday {
+    final days = budget.periodType.getTotalDays(DateTime.now()).clamp(1, 366);
+    final fixedDaily = budget.amountLimit / days;
+    return fixedDaily - todaySpent;
+  }
 
   BudgetPacingModel getPacing({int? year, int? month}) {
     final activeDate = MonthSelectorController.instance.value;
@@ -68,6 +79,13 @@ class BudgetDao {
     final startMs = bounds.start.millisecondsSinceEpoch;
     final endMs = bounds.end.millisecondsSinceEpoch;
 
+    final categoryRows = await db.query(DbConstants.tableCategories);
+    final categoryIdToName = <String, String>{
+      for (final row in categoryRows)
+        if (row['id'] != null && row['name'] != null)
+          row['id'] as String: row['name'] as String,
+    };
+
     // 1. Category Spending aggregation for period
     final spendingRows = await db.rawQuery('''
       SELECT category, sub_category, SUM(amount) AS total_spent, COUNT(id) AS tx_count
@@ -98,6 +116,26 @@ class BudgetDao {
       }
     }
 
+    // Today's spend by category (for safe-today)
+    final now = DateTime.now();
+    final dayStart = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
+    final dayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59, 999).millisecondsSinceEpoch;
+    final todayRows = await db.rawQuery('''
+      SELECT category, sub_category, SUM(amount) AS total_spent
+      FROM ${DbConstants.tableTransactions}
+      WHERE type = 0 AND date >= ? AND date <= ?
+      GROUP BY category, sub_category
+    ''', [dayStart, dayEnd]);
+
+    final Map<String, double> todaySpendMap = {};
+    for (final row in todayRows) {
+      final cat = (row['category'] as String? ?? '').toLowerCase();
+      final subCat = (row['sub_category'] as String? ?? '').toLowerCase();
+      final spent = (row['total_spent'] as num?)?.toDouble() ?? 0.0;
+      if (cat.isNotEmpty) todaySpendMap[cat] = (todaySpendMap[cat] ?? 0.0) + spent;
+      if (subCat.isNotEmpty) todaySpendMap[subCat] = (todaySpendMap[subCat] ?? 0.0) + spent;
+    }
+
     // 2. Previous Period Spending for trend calculations
     final prevDate = _getPreviousPeriodReferenceDate(periodType, referenceDate);
     final prevBounds = periodType.calculatePeriodBounds(prevDate);
@@ -123,12 +161,15 @@ class BudgetDao {
     // 3. Compute BudgetStatusMetrics for each budget
     final List<BudgetSpentSummary> summaries = [];
     for (final budget in activeBudgets) {
-      final keyName = budget.name.toLowerCase();
-      final keyId = budget.categoryId.toLowerCase();
+      final keys = budgetCategoryMatchKeys(
+        budget,
+        categoryIdToName: categoryIdToName,
+      );
 
-      final spent = spendingMap[keyName] ?? spendingMap[keyId] ?? 0.0;
-      final txCount = countMap[keyName] ?? countMap[keyId] ?? 0;
-      final prevSpent = prevSpendingMap[keyName] ?? prevSpendingMap[keyId] ?? 0.0;
+      final spent = spentForBudgetKeys(spendingMap, keys);
+      final txCount = countForBudgetKeys(countMap, keys);
+      final prevSpent = spentForBudgetKeys(prevSpendingMap, keys);
+      final todaySpent = spentForBudgetKeys(todaySpendMap, keys);
 
       final metrics = BudgetStatusEngine.calculate(
         budget: budget,
@@ -142,6 +183,7 @@ class BudgetDao {
       summaries.add(BudgetSpentSummary(
         budget: budget,
         spent: spent,
+        todaySpent: todaySpent,
         metrics: metrics,
       ));
     }
@@ -193,6 +235,7 @@ class BudgetDao {
       budget.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    await DatabaseHelper.instance.forcePersistToDisk();
   }
 
   Future<void> insertBudget(BudgetModel budget) async {
@@ -201,7 +244,13 @@ class BudgetDao {
 
   Future<void> deleteBudget(String id) async {
     final db = await _dbHelper.database;
-    await db.delete(DbConstants.tableBudgets, where: 'id = ?', whereArgs: [id]);
+    await db.update(
+      DbConstants.tableBudgets,
+      {'is_active': 0},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    await DatabaseHelper.instance.forcePersistToDisk();
   }
 
   DateTime _getPreviousPeriodReferenceDate(BudgetPeriodType periodType, DateTime referenceDate) {
@@ -224,6 +273,7 @@ class BudgetDao {
     required DateTime referenceDate,
   }) {
     if (amount <= 0) return amount;
+    if (from == to) return amount;
 
     final daysInMonth = DateTime(referenceDate.year, referenceDate.month + 1, 0).day;
 

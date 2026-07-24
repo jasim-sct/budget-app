@@ -1,6 +1,5 @@
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_helper.dart';
-import '../../../core/services/financial_calculation_engine.dart';
 import '../../../core/services/financial_sync_service.dart';
 import '../../../core/services/global_filter_controller.dart';
 import '../../../core/state/micro_notifier.dart';
@@ -58,6 +57,7 @@ class TransactionRepository {
 
   int _currentOffset = 0;
   bool _isFetching = false;
+  int _loadToken = 0;
 
   TransactionRepository() {
     MonthSelectorController.instance.addListener(loadInitialData);
@@ -66,7 +66,7 @@ class TransactionRepository {
 
   /// Loads filtered transactions and summary totals based on GlobalFilterController and active Month.
   Future<void> loadInitialData() async {
-    if (_isFetching) return;
+    final token = ++_loadToken;
     _isFetching = true;
     _currentOffset = 0;
 
@@ -90,6 +90,8 @@ class TransactionRepository {
         activeMonth: date.month,
       );
 
+      if (token != _loadToken) return;
+
       final txModels = rawTxList.map((map) => TransactionModel.fromMap(map)).toList();
 
       _currentOffset = txModels.length;
@@ -104,9 +106,12 @@ class TransactionRepository {
         ),
       );
     } catch (e) {
+      if (token != _loadToken) return;
       stateNotifier.update(stateNotifier.value.copyWith(isLoading: false, hasMore: false));
     } finally {
-      _isFetching = false;
+      if (token == _loadToken) {
+        _isFetching = false;
+      }
     }
   }
 

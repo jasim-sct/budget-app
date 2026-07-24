@@ -28,6 +28,7 @@ class CategoryModel {
     this.description,
   });
 
+  // ignore: non_const_argument_for_const_parameter
   IconData get icon => IconData(iconCode, fontFamily: 'MaterialIcons');
   Color get color => Color(colorValue);
 

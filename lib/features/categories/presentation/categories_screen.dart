@@ -7,8 +7,6 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../budgets/data/datasources/budget_dao.dart';
-import '../../budgets/domain/models/budget_model.dart';
-import '../../budgets/presentation/widgets/add_budget_bottom_sheet.dart';
 import '../data/category_repository.dart';
 import '../domain/category_model.dart';
 import 'add_category_dialog.dart';
@@ -71,21 +69,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     ).then((_) => _fetchCategoriesAndBudgets());
   }
 
-  void _openSetupBudgetModal(CategoryModel category, double? currentLimit) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => AddBudgetBottomSheet(
-        onSubmit: (budget) async {
-          final dao = BudgetDao(AppDatabase.instance);
-          await dao.insertBudget(budget);
-          await _fetchCategoriesAndBudgets();
-        },
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -136,7 +119,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   
                   final hasBudget = _budgetLimits.containsKey(catKey) || _budgetLimits.containsKey(idKey);
                   final budgetLimit = _budgetLimits[catKey] ?? _budgetLimits[idKey];
-                  final isUsed = usedCategories.contains(catKey);
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -204,33 +186,37 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 ),
                               ),
                               const SizedBox(width: AppSpacing.xs),
-                              if (isUsed)
-                                IconButton(
-                                  icon: Icon(
-                                    Icons.lock_outline_rounded,
-                                    size: 18,
-                                    color: isDark
-                                        ? AppColors.darkTextSecondary.withValues(alpha: 0.4)
-                                        : AppColors.lightTextSecondary.withValues(alpha: 0.4),
-                                  ),
-                                  tooltip: 'Category has active ledger entries and cannot be deleted',
-                                  onPressed: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Cannot delete "${cat.name}" because active ledger entries are linked to it.'),
-                                        backgroundColor: AppColors.expenseRed,
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.expenseRed),
+                                tooltip: 'Delete Category',
+                                onPressed: () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: const Text('Delete Category'),
+                                      content: Text(
+                                        'Are you sure you want to delete "${cat.name}"? It will be removed from future choices, but previous transactions will retain their historical records.',
                                       ),
-                                    );
-                                  },
-                                )
-                              else
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.expenseRed),
-                                  onPressed: () async {
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(ctx, false),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(ctx, true),
+                                          style: TextButton.styleFrom(foregroundColor: AppColors.expenseRed),
+                                          child: const Text('Delete'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (confirm == true) {
                                     await CategoryRepository.instance.deleteCategory(cat.id);
                                     await _fetchCategoriesAndBudgets();
-                                  },
-                                ),
+                                  }
+                                },
+                              ),
                             ],
                           ),
                         ],

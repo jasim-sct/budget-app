@@ -3,6 +3,7 @@ import '../core/database/app_database.dart';
 import '../core/services/currency_provider.dart';
 import '../core/services/financial_calculation_engine.dart';
 import '../core/services/financial_sync_service.dart';
+import '../core/services/pin_auth_service.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/theme_provider.dart';
 import '../core/widgets/context_action_bar.dart';
@@ -13,6 +14,7 @@ import '../features/accounts/data/datasources/account_dao.dart';
 import '../features/accounts/data/repositories/account_repository_impl.dart';
 import '../features/accounts/presentation/modals/add_account_modal.dart';
 import '../features/accounts/presentation/screens/accounts_screen.dart';
+import '../features/authentication/presentation/screens/pin_lock_screen.dart';
 import '../features/authentication/presentation/screens/splash_screen.dart';
 import '../features/budgets/application/budgets_controller.dart';
 import '../features/budgets/data/datasources/budget_dao.dart';
@@ -22,6 +24,7 @@ import '../features/budgets/presentation/widgets/add_budget_bottom_sheet.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
 import '../features/goals/presentation/add_goal_dialog.dart';
 import '../features/transactions/data/transaction_repository.dart';
+import '../features/transactions/domain/transaction_model.dart';
 import '../features/transactions/presentation/add_transaction_dialog.dart';
 import '../features/transactions/presentation/transactions_screen.dart';
 
@@ -60,6 +63,8 @@ class _MainAppShell extends StatefulWidget {
 
 class _MainAppShellState extends State<_MainAppShell> {
   bool _showSplash = true;
+  bool _requirePinUnlock = false;
+  String? _storedPin;
   int _currentIndex = 0;
 
   late final TransactionRepository _transactionRepository;
@@ -79,7 +84,22 @@ class _MainAppShellState extends State<_MainAppShell> {
     final budgetDao = BudgetDao(db);
     _budgetsController = BudgetsController(budgetDao);
 
-    CurrencyProvider.instance.loadSavedCurrency();
+    _loadPersistedSettings();
+  }
+
+  Future<void> _loadPersistedSettings() async {
+    await ThemeProvider.instance.loadSavedTheme();
+    await CurrencyProvider.instance.loadSavedCurrency();
+  }
+
+  Future<void> _onSplashComplete() async {
+    final pin = await PinAuthService.instance.getPin();
+    if (!mounted) return;
+    setState(() {
+      _showSplash = false;
+      _storedPin = pin;
+      _requirePinUnlock = pin != null && pin.length == 4;
+    });
   }
 
   // ── Action Handlers ──
@@ -90,9 +110,10 @@ class _MainAppShellState extends State<_MainAppShell> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => AddTransactionDialog(
+        initialType: isIncome ? TransactionType.income : TransactionType.expense,
         onSubmit: (tx) async {
           await _transactionRepository.addTransaction(tx);
-          FinancialSyncService.instance.notifyMutation();
+          await FinancialSyncService.instance.persistAndNotify();
           await FinancialCalculationEngine.instance.recalculate();
         },
       ),
@@ -196,8 +217,18 @@ class _MainAppShellState extends State<_MainAppShell> {
     if (_showSplash) {
       return SplashScreen(
         onSplashComplete: () {
+          _onSplashComplete();
+        },
+      );
+    }
+
+    if (_requirePinUnlock) {
+      return PinLockScreen(
+        mode: PinLockMode.unlock,
+        correctPin: _storedPin,
+        onSuccess: () {
           setState(() {
-            _showSplash = false;
+            _requirePinUnlock = false;
           });
         },
       );

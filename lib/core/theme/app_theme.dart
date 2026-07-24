@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../navigation/app_router.dart';
 import 'app_colors.dart';
 import 'app_spacing.dart';
 
@@ -27,6 +28,7 @@ abstract class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
+      pageTransitionsTheme: const AppPageTransitionsTheme(),
       scaffoldBackgroundColor: AppColors.lightBackground,
       primaryColor: AppColors.primaryBlue,
       colorScheme: const ColorScheme.light(
@@ -142,6 +144,7 @@ abstract class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+      pageTransitionsTheme: const AppPageTransitionsTheme(),
       scaffoldBackgroundColor: AppColors.darkBackground,
       primaryColor: AppColors.primaryBlue,
       colorScheme: const ColorScheme.dark(

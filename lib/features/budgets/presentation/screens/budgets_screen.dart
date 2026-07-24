@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/navigation/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -59,20 +60,14 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
             icon: const Icon(Icons.flag_outlined, size: 20),
             tooltip: 'Savings Goals',
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const GoalsScreen()),
-              );
+              AppRouter.push(context, const GoalsScreen());
             },
           ),
           IconButton(
             icon: const Icon(Icons.table_chart_outlined, size: 20),
             tooltip: 'Reports',
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ReportsScreen()),
-              );
+              AppRouter.push(context, const ReportsScreen());
             },
           ),
         ],
@@ -139,7 +134,10 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                 ...state.summaries.map((summary) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: BudgetEnvelopeCard(summary: summary),
+                    child: BudgetEnvelopeCard(
+                      summary: summary,
+                      onDelete: () => widget.controller.deleteBudget(summary.budget.id),
+                    ),
                   );
                 }),
 

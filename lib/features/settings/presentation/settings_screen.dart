@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/navigation/app_router.dart';
 import '../../../core/services/currency_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -351,13 +352,18 @@ class SettingsScreen extends StatelessWidget {
             context: context,
             icon: Icons.lock_outline_rounded,
             title: 'Security PIN & Biometrics',
-            subtitle: 'Test 4-digit security PIN lock screen',
+            subtitle: 'Set or change your 4-digit app lock PIN',
             onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => PinLockScreen(
-                    onSuccess: () => Navigator.pop(context),
-                  ),
+              AppRouter.push(
+                context,
+                PinLockScreen(
+                  mode: PinLockMode.setup,
+                  onSuccess: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Security PIN saved')),
+                    );
+                  },
                 ),
               );
             },
@@ -420,11 +426,7 @@ class SettingsScreen extends StatelessWidget {
             title: 'Developer Diagnostics',
             subtitle: 'Frame rate metrics & query monitors',
             onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const DeveloperSettingsScreen(),
-                ),
-              );
+              AppRouter.push(context, const DeveloperSettingsScreen());
             },
             isDark: isDark,
           ),

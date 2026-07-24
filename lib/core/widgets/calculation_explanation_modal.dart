@@ -51,7 +51,12 @@ class CalculationExplanationModal extends StatelessWidget {
     required List<EnvelopeCalculationDetail> envelopeDetails,
     required String dateRange,
   }) {
-    final sources = envelopeDetails.map((e) => '${e.category}: ${AppFormatters.currency(e.remaining)} remaining ÷ ${e.daysRemaining}d = ${AppFormatters.currency(e.dailyLimit)}/day').toList();
+    final sources = envelopeDetails.map((e) {
+      final status = e.remaining < 0
+          ? 'exceeded ${AppFormatters.currency(-e.remaining)}'
+          : 'left ${AppFormatters.currency(e.remaining)}';
+      return '${e.category}: plan ${AppFormatters.currency(e.dailyLimit)}/day − spent ${AppFormatters.currency(e.spent)} → $status';
+    }).toList();
     if (sources.isEmpty) {
       sources.add('No active category budget envelopes configured.');
     }

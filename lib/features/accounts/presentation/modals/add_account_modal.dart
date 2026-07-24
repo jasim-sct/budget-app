@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../../core/database/database_helper.dart';
 import '../../../../core/services/financial_calculation_engine.dart';
 import '../../../../core/services/financial_sync_service.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -67,8 +66,6 @@ class _AddAccountModalState extends State<AddAccountModal> {
         return 'CREDIT';
       case AccountType.investment:
         return 'INVESTMENT';
-      default:
-        return type.name.toUpperCase();
     }
   }
 
@@ -111,7 +108,7 @@ class _AddAccountModalState extends State<AddAccountModal> {
       await DatabaseHelper.instance.insertTransaction(initialTx.toMap());
     }
 
-    FinancialSyncService.instance.notifyMutation();
+    await FinancialSyncService.instance.persistAndNotify();
     await FinancialCalculationEngine.instance.recalculate();
 
     if (widget.onSaved != null) {

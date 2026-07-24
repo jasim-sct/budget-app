@@ -17,13 +17,13 @@ class AccountRepositoryImpl implements AccountRepository {
   @override
   Future<void> saveAccount(AccountModel account) async {
     await _dao.saveAccount(account);
-    FinancialSyncService.instance.notifyMutation();
+    await FinancialSyncService.instance.persistAndNotify();
   }
 
   @override
   Future<void> deleteAccount(String id) async {
     await _dao.deleteAccount(id);
-    FinancialSyncService.instance.notifyMutation();
+    await FinancialSyncService.instance.persistAndNotify();
   }
 
   @override

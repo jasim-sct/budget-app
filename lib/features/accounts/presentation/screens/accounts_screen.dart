@@ -112,7 +112,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
                               context: context,
                               isScrollControlled: true,
                               backgroundColor: Colors.transparent,
-                              builder: (_) => AccountDetailModal(account: acc),
+                              builder: (_) => AccountDetailModal(
+                                account: acc,
+                                onChanged: () => widget.controller.loadAccounts(),
+                              ),
                             );
                           },
                         ),

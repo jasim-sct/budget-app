@@ -135,7 +135,7 @@ class _RemainingBudgetTransferSheetState extends State<RemainingBudgetTransferSh
         bottom: 24 + bottomInset,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark.withOpacity(0.95),
+        color: AppColors.surfaceDark.withValues(alpha: 0.95),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         border: Border.all(color: AppColors.glassBorder),
       ),
@@ -199,7 +199,7 @@ class _RemainingBudgetTransferSheetState extends State<RemainingBudgetTransferSh
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: AppColors.emerald.withOpacity(0.15),
+                      color: AppColors.emerald.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -241,7 +241,7 @@ class _RemainingBudgetTransferSheetState extends State<RemainingBudgetTransferSh
                 : Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppColors.glassBorder),
                     ),

@@ -94,24 +94,35 @@ class BudgetsController {
     try {
       final activeDate = MonthSelectorController.instance.value;
       final selectedPeriod = stateNotifier.value.selectedPeriod;
+      final now = DateTime.now();
       final year = activeDate.year;
       final month = activeDate.month;
 
+      final DateTime effectiveReferenceDate;
+      if (selectedPeriod == BudgetPeriodType.daily || selectedPeriod == BudgetPeriodType.weekly) {
+        if (year == now.year && month == now.month) {
+          effectiveReferenceDate = now;
+        } else {
+          effectiveReferenceDate = activeDate;
+        }
+      } else {
+        effectiveReferenceDate = activeDate;
+      }
+
       final summaries = await _dao.getBudgetsForPeriod(
         periodType: selectedPeriod,
-        referenceDate: activeDate,
+        referenceDate: effectiveReferenceDate,
       );
 
       final dailySpent = await _dao.getDailyCumulativeExpenses(year, month);
       final comparison = await _historyEngine.comparePeriods(
         periodType: selectedPeriod,
-        currentDate: activeDate,
+        currentDate: effectiveReferenceDate,
       );
 
       final double totalLimit = summaries.fold(0.0, (sum, s) => sum + s.metrics.allocation);
       final double totalSpent = summaries.fold(0.0, (sum, s) => sum + s.spent);
 
-      final now = DateTime.now();
       final daysInMonth = DateTime(year, month + 1, 0).day;
       int currentDay = (year == now.year && month == now.month) ? now.day.clamp(1, daysInMonth) : daysInMonth;
 
@@ -140,9 +151,11 @@ class BudgetsController {
           break;
       }
 
+      final double monthTotalSpent = dailySpent.isNotEmpty ? dailySpent.last : totalSpent;
+
       final overallPacing = BudgetPacingCalculator.calculate(
         monthlyBudget: monthlyBaseLimit,
-        totalSpent: selectedPeriod == BudgetPeriodType.monthly ? totalSpent : (totalSpent * (monthlyBaseLimit > 0 ? (monthlyBaseLimit / (totalLimit > 0 ? totalLimit : 1.0)) : 1.0)),
+        totalSpent: monthTotalSpent,
         year: year,
         month: month,
         todaySpent: todaySpent,
@@ -166,12 +179,12 @@ class BudgetsController {
   Future<void> saveBudget(BudgetModel budget) async {
     await _dao.saveBudget(budget);
     await loadBudgets();
-    FinancialSyncService.instance.notifyMutation();
+    await FinancialSyncService.instance.persistAndNotify();
   }
 
   Future<void> deleteBudget(String id) async {
     await _dao.deleteBudget(id);
     await loadBudgets();
-    FinancialSyncService.instance.notifyMutation();
+    await FinancialSyncService.instance.persistAndNotify();
   }
 }

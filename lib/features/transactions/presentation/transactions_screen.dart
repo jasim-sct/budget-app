@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/navigation/app_router.dart';
 import '../../../core/services/global_filter_controller.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -76,20 +77,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             icon: const Icon(Icons.category_outlined, size: 20),
             tooltip: 'Categories',
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CategoriesScreen()),
-              );
+              AppRouter.push(context, const CategoriesScreen());
             },
           ),
           IconButton(
             icon: const Icon(Icons.table_chart_outlined, size: 20),
             tooltip: 'Reports',
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ReportsScreen()),
-              );
+              AppRouter.push(context, const ReportsScreen());
             },
           ),
         ],

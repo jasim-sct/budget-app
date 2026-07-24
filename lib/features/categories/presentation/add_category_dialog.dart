@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../core/database/app_database.dart';
-import '../../../core/database/database_helper.dart';
 import '../../../core/services/currency_provider.dart';
 import '../../../core/services/financial_calculation_engine.dart';
 import '../../../core/services/financial_sync_service.dart';
@@ -109,7 +108,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
         amountLimit: limit,
       );
       await budgetDao.insertBudget(budget);
-      FinancialSyncService.instance.notifyMutation();
+      await FinancialSyncService.instance.persistAndNotify();
       await FinancialCalculationEngine.instance.recalculate();
     }
 
@@ -218,6 +217,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
                           ),
                         ),
                         child: Icon(
+                          // ignore: non_const_argument_for_const_parameter
                           IconData(code, fontFamily: 'MaterialIcons'),
                           color: isSelected ? Colors.white : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
                           size: 22,

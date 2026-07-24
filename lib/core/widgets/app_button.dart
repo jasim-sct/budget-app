@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
+import 'app_micro_pressable.dart';
 
 enum AppButtonVariant { primary, secondary, outline, ghost, gradient, danger }
 
-/// Professional button component with consistent sizing and loading feedback.
+/// Professional button with press feedback that confirms the action was received.
 class AppButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
@@ -104,25 +105,34 @@ class AppButton extends StatelessWidget {
       ],
     );
 
-    return SizedBox(
+    final button = SizedBox(
       width: isFullWidth ? double.infinity : width,
       height: height,
-      child: Material(
-        color: bgColor,
-        borderRadius: radius,
-        child: InkWell(
-          onTap: isDisabled ? null : onPressed,
+      child: AnimatedContainer(
+        duration: AppDurations.fast,
+        curve: AppCurves.standard,
+        padding: padding ?? const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        decoration: BoxDecoration(
+          color: bgColor,
           borderRadius: radius,
-          child: Container(
-            padding: padding ?? const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            decoration: BoxDecoration(
-              borderRadius: radius,
-              border: border,
-            ),
-            child: Center(child: childContent),
-          ),
+          border: border,
+          boxShadow: (!isDisabled &&
+                  (variant == AppButtonVariant.primary ||
+                      variant == AppButtonVariant.gradient ||
+                      variant == AppButtonVariant.danger))
+              ? AppElevation.forLevel(1, isDark: isDark)
+              : AppElevation.level0,
         ),
+        child: Center(child: childContent),
       ),
+    );
+
+    if (isDisabled) return button;
+
+    return AppMicroPressable(
+      onTap: onPressed,
+      scaleFactor: 0.98,
+      child: button,
     );
   }
 }

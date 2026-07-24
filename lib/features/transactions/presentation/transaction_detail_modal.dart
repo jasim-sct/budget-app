@@ -87,7 +87,7 @@ class _TransactionDetailModalState extends State<TransactionDetailModal> {
 
     if (confirmed == true && widget.transaction.id != null) {
       await DatabaseHelper.instance.deleteTransaction(widget.transaction.id!);
-      FinancialSyncService.instance.notifyMutation();
+      await FinancialSyncService.instance.persistAndNotify();
       await FinancialCalculationEngine.instance.recalculate();
       if (mounted) {
         Navigator.pop(context);

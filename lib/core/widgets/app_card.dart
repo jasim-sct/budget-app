@@ -4,7 +4,7 @@ import '../theme/app_spacing.dart';
 import 'app_micro_pressable.dart';
 
 /// Unified card component with optional left accent edge.
-/// Single card language across the entire application.
+/// Soft elevation communicates structure; press scale confirms affordance.
 class AppCard extends StatelessWidget {
   final Widget child;
   final EdgeInsets? padding;
@@ -13,6 +13,9 @@ class AppCard extends StatelessWidget {
   final BorderRadius? borderRadius;
   final VoidCallback? onTap;
   final bool elevated;
+
+  /// Structural depth 0–3 (ignored when [elevated] is true → level 1).
+  final int elevationLevel;
 
   const AppCard({
     super.key,
@@ -23,6 +26,7 @@ class AppCard extends StatelessWidget {
     this.borderRadius,
     this.onTap,
     this.elevated = false,
+    this.elevationLevel = 0,
   });
 
   @override
@@ -35,8 +39,12 @@ class AppCard extends StatelessWidget {
             : (elevated ? AppColors.lightSurfaceElevated : AppColors.lightCardBg));
 
     final effectiveRadius = borderRadius ?? AppRadius.borderMd;
+    final level = elevated ? 1 : elevationLevel;
+    final shadows = AppElevation.forLevel(level, isDark: isDark);
 
-    final card = Container(
+    final card = AnimatedContainer(
+      duration: AppDurations.fast,
+      curve: AppCurves.standard,
       clipBehavior: (accentColor != null || borderRadius != null) ? Clip.antiAlias : Clip.none,
       decoration: BoxDecoration(
         color: effectiveBg,
@@ -45,7 +53,7 @@ class AppCard extends StatelessWidget {
           color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
           width: 1,
         ),
-        boxShadow: elevated ? AppShadows.sm : AppShadows.none,
+        boxShadow: shadows,
       ),
       child: accentColor != null
           ? IntrinsicHeight(

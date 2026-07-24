@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'app_motion.dart';
+export 'app_motion.dart';
+
 /// Centralized Spacing, Radius, Shadow, and Duration Tokens.
 abstract class AppSpacing {
   static const double xxs = 2.0;
@@ -37,34 +40,10 @@ abstract class AppRadius {
 }
 
 abstract class AppShadows {
-  static const List<BoxShadow> none = [];
-
-  /// Subtle shadow for flat cards and inputs.
-  static const List<BoxShadow> sm = [
-    BoxShadow(
-      color: Color(0x08000000),
-      blurRadius: 4,
-      offset: Offset(0, 1),
-    ),
-  ];
-
-  /// Default card elevation.
-  static const List<BoxShadow> md = [
-    BoxShadow(
-      color: Color(0x0A000000),
-      blurRadius: 8,
-      offset: Offset(0, 2),
-    ),
-  ];
-
-  /// Elevated elements (FABs, modals, dropdowns).
-  static const List<BoxShadow> lg = [
-    BoxShadow(
-      color: Color(0x12000000),
-      blurRadius: 16,
-      offset: Offset(0, 4),
-    ),
-  ];
+  static const List<BoxShadow> none = AppElevation.level0;
+  static const List<BoxShadow> sm = AppElevation.level1;
+  static const List<BoxShadow> md = AppElevation.level2;
+  static const List<BoxShadow> lg = AppElevation.level3;
 
   static const List<BoxShadow> soft = sm;
   static const List<BoxShadow> card = md;
@@ -72,12 +51,4 @@ abstract class AppShadows {
 
   static List<BoxShadow> glow(Color color) => md;
   static List<BoxShadow> neonGlow(Color color) => md;
-}
-
-/// Standardized animation durations.
-abstract class AppDurations {
-  static const Duration fast = Duration(milliseconds: 150);
-  static const Duration normal = Duration(milliseconds: 250);
-  static const Duration slow = Duration(milliseconds: 400);
-  static const Duration pageTransition = Duration(milliseconds: 200);
 }

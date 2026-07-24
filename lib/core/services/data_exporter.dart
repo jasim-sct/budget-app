@@ -91,5 +91,6 @@ class DataExporter {
     }
 
     await batch.commit(noResult: true);
+    await DatabaseHelper.instance.forcePersistToDisk();
   }
 }

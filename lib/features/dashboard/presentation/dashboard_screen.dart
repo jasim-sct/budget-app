@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../core/navigation/app_router.dart';
 import '../../../core/services/financial_calculation_engine.dart';
 import '../../../core/services/financial_metrics.dart';
+import '../../../core/services/financial_sync_service.dart';
 import '../../../core/services/intent_decision_engine.dart';
 import '../../../core/services/time_context_engine.dart';
 import '../../../core/theme/app_colors.dart';
@@ -49,9 +51,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _timeContext = TimeContextEngine.getCurrentContext();
     _loadIntentState();
 
+    FinancialSyncService.instance.addListener(_onFinancialMutation);
+    FinancialCalculationEngine.instance.metricsNotifier.addListener(_onFinancialMutation);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.repository.loadInitialData();
+      FinancialCalculationEngine.instance.recalculate();
     });
+  }
+
+  @override
+  void dispose() {
+    FinancialSyncService.instance.removeListener(_onFinancialMutation);
+    FinancialCalculationEngine.instance.metricsNotifier.removeListener(_onFinancialMutation);
+    super.dispose();
+  }
+
+  void _onFinancialMutation() {
+    _loadIntentState();
   }
 
   Future<void> _loadIntentState() async {
@@ -69,10 +86,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context,
       title: 'Daily Safe Spending Calculation',
       metricValue: AppFormatters.currency(_intentState?.dailySafeSpend ?? 0.0),
-      formulaDescription: 'Daily Safe Spending is calculated exclusively as the sum of remaining envelope balances divided by remaining days in each budget period.',
-      latexFormula: r'Daily Limit = \sum (Envelope Remaining \div Days Left)',
+      formulaDescription:
+          'Today\'s safe amount = sum of fixed daily allocations (budget ÷ period days) minus today\'s actual spending. Negative means exceeded today\'s plan.',
+      latexFormula: r'Safe_{today} = \sum (Budget \div Days) - Spent_{today}',
       envelopeDetails: details,
-      dateRange: '${AppFormatters.date(DateTime.now())} - Month End',
+      dateRange: AppFormatters.date(DateTime.now()),
     );
   }
 
@@ -130,9 +148,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         _HeaderIconButton(
                           icon: Icons.settings_outlined,
                           onTap: () {
-                            Navigator.push(
+                            AppRouter.push(
                               context,
-                              MaterialPageRoute(builder: (_) => SettingsScreen(repository: widget.repository)),
+                              SettingsScreen(repository: widget.repository),
                             );
                           },
                           isDark: isDark,

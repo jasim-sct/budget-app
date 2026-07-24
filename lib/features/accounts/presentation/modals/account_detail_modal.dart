@@ -1,25 +1,32 @@
 import 'package:flutter/material.dart';
+import '../../../../core/database/app_database.dart';
 import '../../../../core/database/database_helper.dart';
+import '../../../../core/services/financial_sync_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../data/datasources/account_dao.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_chip.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/glass/glass_bottom_sheet.dart';
 import '../../../transactions/domain/transaction_model.dart';
 import '../../../transactions/presentation/transaction_detail_modal.dart';
 import '../../../transactions/presentation/widgets/transaction_item_tile.dart';
 import '../../domain/models/account_model.dart';
+import 'account_transfer_sheet.dart';
 
 /// Modal Bottom Sheet displaying Account Analytics, linked ledger transactions, and balance history.
 class AccountDetailModal extends StatefulWidget {
   final AccountModel account;
+  final VoidCallback? onChanged;
 
   const AccountDetailModal({
     super.key,
     required this.account,
+    this.onChanged,
   });
 
   @override
@@ -31,10 +38,12 @@ class _AccountDetailModalState extends State<AccountDetailModal> {
   List<TransactionModel> _linkedTransactions = [];
   List<Map<String, dynamic>> _auditLogs = [];
   bool _isLoading = true;
+  late double _balance;
 
   @override
   void initState() {
     super.initState();
+    _balance = widget.account.balance;
     _loadData();
   }
 
@@ -44,12 +53,21 @@ class _AccountDetailModalState extends State<AccountDetailModal> {
     final rawTxList = await db.getTransactionsForAccount(widget.account.id);
     final txList = rawTxList.map((m) => TransactionModel.fromMap(m)).toList();
     final logs = await db.getAuditLogs('account', widget.account.id);
+    final accounts = await db.getAllAccounts();
+    double balance = widget.account.balance;
+    for (final a in accounts) {
+      if (a['id'] == widget.account.id) {
+        balance = (a['balance'] as num?)?.toDouble() ?? balance;
+        break;
+      }
+    }
 
     if (mounted) {
       setState(() {
         _analytics = analyticsData;
         _linkedTransactions = txList;
         _auditLogs = logs;
+        _balance = balance;
         _isLoading = false;
       });
     }
@@ -104,9 +122,46 @@ class _AccountDetailModalState extends State<AccountDetailModal> {
                     ),
                   ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close_rounded, size: 20),
-                  onPressed: () => Navigator.pop(context),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.expenseRed),
+                      tooltip: 'Delete Account',
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Delete Account'),
+                            content: Text(
+                              'Are you sure you want to delete "${acc.name}"? It will be archived and hidden from future choices, while past transactions remain preserved.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                style: TextButton.styleFrom(foregroundColor: AppColors.expenseRed),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true) {
+                          final dao = AccountDao(AppDatabase.instance);
+                          await dao.deleteAccount(acc.id);
+                          await FinancialSyncService.instance.persistAndNotify();
+                          if (widget.onChanged != null) widget.onChanged!();
+                          if (context.mounted) Navigator.pop(context);
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -132,12 +187,38 @@ class _AccountDetailModalState extends State<AccountDetailModal> {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    AppFormatters.currency(acc.balance),
+                    AppFormatters.currency(_balance),
                     style: TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.w700,
-                      color: acc.balance < 0 ? AppColors.expenseRed : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
+                      color: _balance < 0 ? AppColors.expenseRed : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
                     ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  AppButton(
+                    label: 'Transfer to another account',
+                    icon: Icons.swap_horiz_rounded,
+                    variant: AppButtonVariant.outline,
+                    onPressed: () {
+                      final from = AccountModel(
+                        id: acc.id,
+                        name: acc.name,
+                        type: acc.type,
+                        balance: _balance,
+                        currency: acc.currency,
+                        colorValue: acc.colorValue,
+                        isActive: acc.isActive,
+                        updatedAt: acc.updatedAt,
+                      );
+                      AccountTransferSheet.show(
+                        context,
+                        fromAccount: from,
+                        onTransferCompleted: () {
+                          _loadData();
+                          widget.onChanged?.call();
+                        },
+                      );
+                    },
                   ),
                 ],
               ),

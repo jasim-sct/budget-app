@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:sqflite/sqflite.dart';
-import '../database/database_helper.dart';
+import 'user_settings_store.dart';
 
 /// Data model representing a country currency configuration.
 class CurrencyOption {
@@ -35,50 +34,28 @@ class CurrencyProvider extends ValueNotifier<CurrencyOption> {
   String get currentSymbol => value.symbol;
   String get currentCode => value.code;
 
-  void selectCurrency(CurrencyOption option) {
+  Future<void> selectCurrency(CurrencyOption option) async {
     value = option;
-    _saveSetting(option.code);
+    await UserSettingsStore.instance.setCurrencyCode(option.code);
   }
 
-  void selectByCode(String code) {
+  Future<void> selectByCode(String code) async {
     final match = availableCurrencies.firstWhere(
       (c) => c.code.toUpperCase() == code.toUpperCase(),
       orElse: () => availableCurrencies[0],
     );
     value = match;
-    _saveSetting(match.code);
+    await UserSettingsStore.instance.setCurrencyCode(match.code);
   }
 
   Future<void> loadSavedCurrency() async {
-    try {
-      final db = await DatabaseHelper.instance.database;
-      final result = await db.query(
-        'user_settings',
-        where: 'key = ?',
-        whereArgs: ['currency_code'],
-      );
-      if (result.isNotEmpty) {
-        final code = result.first['value'] as String?;
-        if (code != null) {
-          final match = availableCurrencies.firstWhere(
-            (c) => c.code.toUpperCase() == code.toUpperCase(),
-            orElse: () => availableCurrencies[0],
-          );
-          value = match;
-        }
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _saveSetting(String code) async {
-    try {
-      final db = await DatabaseHelper.instance.database;
-      await db.insert(
-        'user_settings',
-        {'key': 'currency_code', 'value': code},
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-    } catch (_) {}
+    final code = await UserSettingsStore.instance.getCurrencyCode();
+    if (code == null) return;
+    final match = availableCurrencies.firstWhere(
+      (c) => c.code.toUpperCase() == code.toUpperCase(),
+      orElse: () => availableCurrencies[0],
+    );
+    value = match;
   }
 
   static final CurrencyProvider instance = CurrencyProvider();

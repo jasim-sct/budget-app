@@ -13,11 +13,13 @@ import '../widgets/remaining_budget_transfer_sheet.dart';
 class BudgetEnvelopeCard extends StatefulWidget {
   final BudgetSpentSummary summary;
   final VoidCallback? onActionCompleted;
+  final VoidCallback? onDelete;
 
   const BudgetEnvelopeCard({
     super.key,
     required this.summary,
     this.onActionCompleted,
+    this.onDelete,
   });
 
   @override
@@ -106,6 +108,38 @@ class _BudgetEnvelopeCardState extends State<BudgetEnvelopeCard> {
                         ),
                       ),
                     ),
+                    if (widget.onDelete != null)
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.expenseRed),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        tooltip: 'Delete Budget',
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Delete Budget'),
+                              content: Text(
+                                'Are you sure you want to delete budget "${widget.summary.budget.name}"? Active tracking will end, but past transaction history remains preserved.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  style: TextButton.styleFrom(foregroundColor: AppColors.expenseRed),
+                                  child: const Text('Delete'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true && widget.onDelete != null) {
+                            widget.onDelete!();
+                          }
+                        },
+                      ),
                   ],
                 ),
               ),
@@ -162,9 +196,11 @@ class _BudgetEnvelopeCardState extends State<BudgetEnvelopeCard> {
             children: [
               Expanded(
                 child: AppKeywordMetricTile(
-                  keyword: 'TODAY\'S SAFE LIMIT',
-                  value: '${AppFormatters.currency(metrics.dailyTarget)}/day',
-                  color: isOverspent ? AppColors.expenseRed : AppColors.primaryBlue,
+                  keyword: 'SAFE TODAY',
+                  value: AppFormatters.currency(widget.summary.safeToday),
+                  color: widget.summary.safeToday < 0
+                      ? AppColors.expenseRed
+                      : (isOverspent ? AppColors.expenseRed : AppColors.primaryBlue),
                   icon: Icons.wb_sunny_outlined,
                 ),
               ),
@@ -175,6 +211,28 @@ class _BudgetEnvelopeCardState extends State<BudgetEnvelopeCard> {
                   value: '${AppFormatters.currency(metrics.spent)} / ${AppFormatters.currency(metrics.allocation)}',
                   color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
                   icon: Icons.pie_chart_outline_rounded,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Row(
+            children: [
+              Expanded(
+                child: AppKeywordMetricTile(
+                  keyword: 'PLAN / DAY',
+                  value: AppFormatters.currency(metrics.dailyTarget),
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  icon: Icons.calendar_today_outlined,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: AppKeywordMetricTile(
+                  keyword: 'SPENT TODAY',
+                  value: AppFormatters.currency(widget.summary.todaySpent),
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  icon: Icons.payments_outlined,
                 ),
               ),
             ],

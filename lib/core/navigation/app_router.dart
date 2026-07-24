@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../theme/app_motion.dart';
+import 'app_page_routes.dart';
 
 /// Fast, lightweight zero-dependency App Router.
-/// Uses instant page transitions to save GPU/CPU cycles on low-end hardware.
+/// Uses context-preserving fade-slide transitions (Financial OS motion language).
 abstract class AppRoutes {
   static const String initial = '/';
   static const String pinLock = '/auth/pin';
@@ -23,19 +25,51 @@ abstract class AppRoutes {
 
 class AppRouter {
   static Route<dynamic> generateRoute(RouteSettings routeSettings, Widget Function(String) screenBuilder) {
-    return PageRouteBuilder(
+    final page = screenBuilder(routeSettings.name ?? AppRoutes.dashboard);
+    return AppPageRoutes.fadeSlide(
+      page,
       settings: routeSettings,
-      transitionDuration: const Duration(milliseconds: 150),
-      reverseTransitionDuration: const Duration(milliseconds: 150),
-      pageBuilder: (context, animation, secondaryAnimation) {
-        return screenBuilder(routeSettings.name ?? AppRoutes.dashboard);
-      },
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(
-          opacity: animation,
-          child: child,
-        );
-      },
+    );
+  }
+
+  /// Prefer this over raw [MaterialPageRoute] for in-app pushes.
+  static Future<T?> push<T extends Object?>(BuildContext context, Widget page) {
+    return Navigator.of(context).push<T>(AppPageRoutes.fadeSlide<T>(page));
+  }
+
+  static Future<T?> pushSharedAxis<T extends Object?>(
+    BuildContext context,
+    Widget page, {
+    bool forward = true,
+  }) {
+    return Navigator.of(context).push<T>(
+      AppPageRoutes.sharedAxis<T>(page, forward: forward),
+    );
+  }
+}
+
+/// Theme-level page transitions for MaterialApp (when using named routes / themes).
+class AppPageTransitionsTheme extends PageTransitionsTheme {
+  const AppPageTransitionsTheme();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final curved = CurvedAnimation(parent: animation, curve: AppCurves.enter);
+    return FadeTransition(
+      opacity: curved,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.02),
+          end: Offset.zero,
+        ).animate(curved),
+        child: child,
+      ),
     );
   }
 }

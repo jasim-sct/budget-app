@@ -1,16 +1,26 @@
 import 'package:flutter/material.dart';
+import '../../../../core/services/pin_auth_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_card.dart';
 
-/// PIN & Biometrics Lock Screen.
+enum PinLockMode {
+  /// Create or replace the stored PIN (enter + confirm).
+  setup,
+  /// Unlock using the stored PIN.
+  unlock,
+}
+
+/// PIN lock / setup screen. PIN is persisted in SQLite app storage.
 class PinLockScreen extends StatefulWidget {
+  final PinLockMode mode;
   final String? correctPin;
   final VoidCallback onSuccess;
 
   const PinLockScreen({
     super.key,
+    this.mode = PinLockMode.unlock,
     this.correctPin,
     required this.onSuccess,
   });
@@ -21,6 +31,8 @@ class PinLockScreen extends StatefulWidget {
 
 class _PinLockScreenState extends State<PinLockScreen> with SingleTickerProviderStateMixin {
   final List<int> _enteredPin = [];
+  String? _pendingSetupPin;
+  bool _isBusy = false;
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
 
@@ -42,41 +54,94 @@ class _PinLockScreenState extends State<PinLockScreen> with SingleTickerProvider
     super.dispose();
   }
 
+  String get _title {
+    if (widget.mode == PinLockMode.setup) {
+      return _pendingSetupPin == null ? 'Create Security PIN' : 'Confirm Security PIN';
+    }
+    return 'Enter Security PIN';
+  }
+
+  String get _subtitle {
+    if (widget.mode == PinLockMode.setup) {
+      return _pendingSetupPin == null
+          ? 'Choose a 4-digit PIN to protect the app'
+          : 'Re-enter the same 4-digit PIN';
+    }
+    return 'Protected by App Security';
+  }
+
   void _onKeyPress(int number) {
-    if (_enteredPin.length < 4) {
-      setState(() {
-        _enteredPin.add(number);
-      });
-      if (_enteredPin.length == 4) {
-        _verifyPin();
-      }
+    if (_isBusy || _enteredPin.length >= 4) return;
+    setState(() {
+      _enteredPin.add(number);
+    });
+    if (_enteredPin.length == 4) {
+      _handleCompletePin();
     }
   }
 
   void _onBackspace() {
-    if (_enteredPin.isNotEmpty) {
-      setState(() {
-        _enteredPin.removeLast();
-      });
-    }
+    if (_isBusy || _enteredPin.isEmpty) return;
+    setState(() {
+      _enteredPin.removeLast();
+    });
   }
 
-  void _verifyPin() {
+  Future<void> _handleCompletePin() async {
     final pinString = _enteredPin.join();
-    if (widget.correctPin == null || pinString == widget.correctPin) {
-      widget.onSuccess();
-    } else {
-      _shakeController.forward(from: 0.0);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Incorrect Security PIN. Please try again.'),
-          backgroundColor: AppColors.expenseRed,
-        ),
-      );
-      setState(() {
-        _enteredPin.clear();
-      });
+
+    if (widget.mode == PinLockMode.setup) {
+      if (_pendingSetupPin == null) {
+        setState(() {
+          _pendingSetupPin = pinString;
+          _enteredPin.clear();
+        });
+        return;
+      }
+
+      if (pinString != _pendingSetupPin) {
+        _shakeAndReset('PINs do not match. Try again.');
+        setState(() {
+          _pendingSetupPin = null;
+        });
+        return;
+      }
+
+      setState(() => _isBusy = true);
+      try {
+        await PinAuthService.instance.savePin(pinString);
+        if (!mounted) return;
+        widget.onSuccess();
+      } catch (_) {
+        if (!mounted) return;
+        _shakeAndReset('Could not save PIN. Please try again.');
+      } finally {
+        if (mounted) setState(() => _isBusy = false);
+      }
+      return;
     }
+
+    // Unlock mode — require a real stored PIN; never accept null as open access.
+    final expected = widget.correctPin;
+    if (expected != null && pinString == expected) {
+      widget.onSuccess();
+      return;
+    }
+
+    _shakeAndReset('Incorrect Security PIN. Please try again.');
+  }
+
+  void _shakeAndReset(String message) {
+    _shakeController.forward(from: 0.0);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.expenseRed,
+      ),
+    );
+    setState(() {
+      _enteredPin.clear();
+    });
   }
 
   @override
@@ -88,7 +153,6 @@ class _PinLockScreenState extends State<PinLockScreen> with SingleTickerProvider
         child: Column(
           children: [
             const Spacer(),
-            // Lock Icon Badge
             Container(
               width: 64,
               height: 64,
@@ -104,17 +168,16 @@ class _PinLockScreenState extends State<PinLockScreen> with SingleTickerProvider
             ),
             const SizedBox(height: AppSpacing.md),
             Text(
-              'Enter Security PIN',
+              _title,
               style: AppTypography.displayMedium(isDark).copyWith(fontSize: 22),
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Protected by App Security',
+              _subtitle,
               style: AppTypography.caption(isDark),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.xl),
-
-            // PIN Dots Indicator
             AnimatedBuilder(
               animation: _shakeAnimation,
               builder: (context, child) {
@@ -143,8 +206,6 @@ class _PinLockScreenState extends State<PinLockScreen> with SingleTickerProvider
               ),
             ),
             const Spacer(),
-
-            // Numeric Keypad Grid
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.md),
               child: Column(
@@ -162,11 +223,7 @@ class _PinLockScreenState extends State<PinLockScreen> with SingleTickerProvider
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.fingerprint_rounded, size: 28),
-                        color: AppColors.primaryBlue,
-                        onPressed: () => widget.onSuccess(),
-                      ),
+                      const SizedBox(width: 64, height: 64),
                       _buildKey(0, isDark),
                       IconButton(
                         icon: const Icon(Icons.backspace_outlined, size: 22),

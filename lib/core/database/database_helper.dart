@@ -25,6 +25,17 @@ class DatabaseHelper {
     return _database!;
   }
 
+  /// Forces WAL pages into the main DB file on disk (app-private storage).
+  Future<void> forcePersistToDisk() async {
+    final db = await database;
+    await db.rawQuery('PRAGMA wal_checkpoint(FULL);');
+  }
+
+  Future<void> _persistAndNotify() async {
+    await forcePersistToDisk();
+    FinancialSyncService.instance.notifyMutation();
+  }
+
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
     final path = p.join(dbPath, 'budget_lite_enterprise_v3.db');
@@ -36,7 +47,8 @@ class DatabaseHelper {
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
         await db.execute('PRAGMA journal_mode = WAL;');
-        await db.execute('PRAGMA synchronous = NORMAL;');
+        // FULL forces durable disk flush of each committed frame (app storage).
+        await db.execute('PRAGMA synchronous = FULL;');
         await db.execute('PRAGMA foreign_keys = ON;');
       },
       onOpen: (db) async {
@@ -241,6 +253,10 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_tx_month_year ON transactions(year, month);');
     await db.execute('CREATE INDEX idx_tx_cat ON transactions(category);');
     await db.execute('CREATE INDEX idx_cat_parent ON categories(parent_id);');
+
+    await db.execute(
+      'CREATE TABLE IF NOT EXISTS user_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);',
+    );
 
     await _seedEnterpriseDefaults(db);
   }
@@ -535,7 +551,132 @@ class DatabaseHelper {
 
   // --- MASTER LEDGER CRUD & ENTERPRISE FILTERED AGGREGATIONS ---
 
+  /// Ledger type codes (root model).
+  /// 0 Expense · 1 Income · 2 Self-transfer (always two legs: out + in)
+  static const int ledgerExpense = 0;
+  static const int ledgerIncome = 1;
+  static const int ledgerTransfer = 2;
+
+  static const String transferOutMethod = 'Transfer Out';
+  static const String transferInMethod = 'Transfer In';
+
+  /// Balance delta for a single ledger row.
+  /// Self-transfer must be two rows: out (−) and in (+). Never one row alone.
+  static double ledgerBalanceDelta(Map<String, dynamic> row) {
+    final amount = (row['amount'] as num?)?.toDouble() ?? 0.0;
+    final type = row['type'] as int? ?? ledgerExpense;
+    if (type == ledgerIncome) return amount;
+    if (type == ledgerTransfer) {
+      final method = row['payment_method'] as String? ?? '';
+      if (method == transferInMethod) return amount;
+      return -amount; // Transfer Out (default for type 2)
+    }
+    return -amount; // expense / other debit types
+  }
+
+  /// Creates a self-transfer as two linked ledger entries:
+  /// 1) remove from [fromAccountId]  2) add to [toAccountId]
+  /// Does not affect income/expense totals (type = 2).
+  Future<Map<String, dynamic>> createSelfTransfer({
+    required String fromAccountId,
+    required String fromAccountName,
+    required String toAccountId,
+    required String toAccountName,
+    required double amount,
+    String? title,
+    int? dateMilliseconds,
+    String? notes,
+  }) async {
+    if (amount <= 0) {
+      throw ArgumentError('Transfer amount must be greater than zero.');
+    }
+    if (fromAccountId == toAccountId) {
+      throw ArgumentError('Source and destination accounts must differ.');
+    }
+
+    final db = await database;
+    final dateMs = dateMilliseconds ?? DateTime.now().millisecondsSinceEpoch;
+    final dt = DateTime.fromMillisecondsSinceEpoch(dateMs);
+    final transferId = 'xfer_${dateMs}_${fromAccountId}_$toAccountId';
+    final baseTitle = title?.trim().isNotEmpty == true ? title!.trim() : 'Self Transfer';
+    final sharedNotes = notes ?? 'Self transfer $transferId';
+
+    late final int outId;
+    late final int inId;
+
+    await db.transaction((txn) async {
+      final outRow = <String, dynamic>{
+        'title': '$baseTitle → $toAccountName',
+        'amount': amount,
+        'date': dateMs,
+        'month': dt.month,
+        'year': dt.year,
+        'category': 'Transfer',
+        'type': ledgerTransfer,
+        'account_id': fromAccountId,
+        'account_name': fromAccountName,
+        'payment_method': transferOutMethod,
+        'notes': sharedNotes,
+        'reference_number': transferId,
+        'status': 'cleared',
+      };
+
+      final inRow = <String, dynamic>{
+        'title': '$baseTitle ← $fromAccountName',
+        'amount': amount,
+        'date': dateMs,
+        'month': dt.month,
+        'year': dt.year,
+        'category': 'Transfer',
+        'type': ledgerTransfer,
+        'account_id': toAccountId,
+        'account_name': toAccountName,
+        'payment_method': transferInMethod,
+        'notes': sharedNotes,
+        'reference_number': transferId,
+        'status': 'cleared',
+      };
+
+      outId = await txn.insert('transactions', outRow);
+      inId = await txn.insert('transactions', inRow);
+
+      await txn.rawUpdate(
+        'UPDATE accounts SET balance = balance + ?, updated_at = ? WHERE id = ?',
+        [ledgerBalanceDelta(outRow), dateMs, fromAccountId],
+      );
+      await txn.rawUpdate(
+        'UPDATE accounts SET balance = balance + ?, updated_at = ? WHERE id = ?',
+        [ledgerBalanceDelta(inRow), dateMs, toAccountId],
+      );
+    });
+
+    await logAudit(
+      'transfer',
+      transferId,
+      'created',
+      newValue:
+          '$baseTitle • \$${amount.toStringAsFixed(2)} • $fromAccountName → $toAccountName (out=$outId, in=$inId)',
+    );
+
+    await _persistAndNotify();
+    return {
+      'transfer_id': transferId,
+      'out_id': outId,
+      'in_id': inId,
+      'amount': amount,
+      'from_account_id': fromAccountId,
+      'to_account_id': toAccountId,
+    };
+  }
+
   Future<int> insertTransaction(Map<String, dynamic> row) async {
+    final type = row['type'] as int? ?? ledgerExpense;
+    if (type == ledgerTransfer) {
+      throw StateError(
+        'Self-transfer requires two ledger legs. Use createSelfTransfer() instead of insertTransaction().',
+      );
+    }
+
     final db = await database;
     final dateMs = row['date'] as int? ?? DateTime.now().millisecondsSinceEpoch;
     final dt = DateTime.fromMillisecondsSinceEpoch(dateMs);
@@ -547,8 +688,7 @@ class DatabaseHelper {
 
     final accountId = map['account_id'] as String? ?? 'acc_cash';
     final amount = (map['amount'] as num?)?.toDouble() ?? 0.0;
-    final type = map['type'] as int? ?? 0;
-    final double delta = (type == 1) ? amount : -amount;
+    final double delta = ledgerBalanceDelta(map);
 
     final id = await db.insert(
       'transactions',
@@ -556,7 +696,6 @@ class DatabaseHelper {
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
 
-    // Adjust target wallet/account balance through ledger entry
     await db.rawUpdate(
       'UPDATE accounts SET balance = balance + ? WHERE id = ?',
       [delta, accountId],
@@ -566,10 +705,10 @@ class DatabaseHelper {
       'transaction',
       '$id',
       'created',
-      newValue: '${map['title']} • ${type == 1 ? "+" : "-"}\$${amount.toStringAsFixed(2)} (${map['category']})',
+      newValue: '${map['title']} • ${type == ledgerIncome ? "+" : "-"}\$${amount.toStringAsFixed(2)} (${map['category']})',
     );
 
-    FinancialSyncService.instance.notifyMutation();
+    await _persistAndNotify();
     return id;
   }
 
@@ -581,12 +720,18 @@ class DatabaseHelper {
     if (oldRows.isEmpty) return 0;
     final oldRow = oldRows.first;
 
+    if ((oldRow['type'] as int? ?? 0) == ledgerTransfer ||
+        (row['type'] as int? ?? 0) == ledgerTransfer) {
+      throw StateError(
+        'Self-transfer legs cannot be updated individually. Delete the pair and create a new transfer.',
+      );
+    }
+
     final oldAccountId = oldRow['account_id'] as String? ?? 'acc_cash';
     final oldAmount = (oldRow['amount'] as num?)?.toDouble() ?? 0.0;
     final oldType = oldRow['type'] as int? ?? 0;
-    final double oldDelta = (oldType == 1) ? oldAmount : -oldAmount;
+    final double oldDelta = ledgerBalanceDelta(oldRow);
 
-    // Revert old transaction effect
     await db.rawUpdate('UPDATE accounts SET balance = balance - ? WHERE id = ?', [oldDelta, oldAccountId]);
 
     final int dateMs = (row['date'] as int?) ?? (oldRow['date'] as int? ?? DateTime.now().millisecondsSinceEpoch);
@@ -599,19 +744,18 @@ class DatabaseHelper {
     final newAccountId = map['account_id'] as String? ?? 'acc_cash';
     final newAmount = (map['amount'] as num?)?.toDouble() ?? 0.0;
     final newType = map['type'] as int? ?? 0;
-    final double newDelta = (newType == 1) ? newAmount : -newAmount;
+    final double newDelta = ledgerBalanceDelta(map);
 
-    // Apply new transaction effect
     await db.rawUpdate('UPDATE accounts SET balance = balance + ? WHERE id = ?', [newDelta, newAccountId]);
 
     final count = await db.update('transactions', map, where: 'id = ?', whereArgs: [id]);
 
-    final String oldSummary = '${oldRow['title']} • ${oldType == 1 ? "+" : "-"}\$${oldAmount.toStringAsFixed(2)} (${oldRow['category']})';
-    final String newSummary = '${map['title']} • ${newType == 1 ? "+" : "-"}\$${newAmount.toStringAsFixed(2)} (${map['category']})';
+    final String oldSummary = '${oldRow['title']} • ${oldType == ledgerIncome ? "+" : "-"}\$${oldAmount.toStringAsFixed(2)} (${oldRow['category']})';
+    final String newSummary = '${map['title']} • ${newType == ledgerIncome ? "+" : "-"}\$${newAmount.toStringAsFixed(2)} (${map['category']})';
 
     await logAudit('transaction', '$id', 'updated', oldValue: oldSummary, newValue: newSummary);
 
-    FinancialSyncService.instance.notifyMutation();
+    await _persistAndNotify();
     return count;
   }
 
@@ -856,21 +1000,55 @@ class DatabaseHelper {
   Future<int> deleteTransaction(int id) async {
     final db = await database;
     final rows = await db.query('transactions', where: 'id = ?', whereArgs: [id], limit: 1);
-    if (rows.isNotEmpty) {
-      final row = rows.first;
-      final accountId = row['account_id'] as String? ?? 'acc_cash';
-      final amount = (row['amount'] as num?)?.toDouble() ?? 0.0;
-      final type = row['type'] as int? ?? 0;
-      // Revert balance: subtract income, add back expense
-      final double delta = (type == 1) ? -amount : amount;
-      await db.rawUpdate(
-        'UPDATE accounts SET balance = balance + ? WHERE id = ?',
-        [delta, accountId],
-      );
+    if (rows.isEmpty) return 0;
+
+    final row = rows.first;
+    final type = row['type'] as int? ?? ledgerExpense;
+
+    // Self-transfer: delete both linked legs and revert both balances.
+    if (type == ledgerTransfer) {
+      final transferId = row['reference_number'] as String?;
+      if (transferId != null && transferId.isNotEmpty) {
+        return deleteSelfTransfer(transferId);
+      }
     }
+
+    final accountId = row['account_id'] as String? ?? 'acc_cash';
+    final double applied = ledgerBalanceDelta(row);
+    await db.rawUpdate(
+      'UPDATE accounts SET balance = balance - ? WHERE id = ?',
+      [applied, accountId],
+    );
     final res = await db.delete('transactions', where: 'id = ?', whereArgs: [id]);
-    FinancialSyncService.instance.notifyMutation();
+    await _persistAndNotify();
     return res;
+  }
+
+  /// Deletes both legs of a self-transfer and reverts both account balances.
+  Future<int> deleteSelfTransfer(String transferId) async {
+    final db = await database;
+    final legs = await db.query(
+      'transactions',
+      where: 'type = ? AND reference_number = ?',
+      whereArgs: [ledgerTransfer, transferId],
+    );
+    if (legs.isEmpty) return 0;
+
+    await db.transaction((txn) async {
+      for (final leg in legs) {
+        final accountId = leg['account_id'] as String? ?? 'acc_cash';
+        final applied = ledgerBalanceDelta(leg);
+        await txn.rawUpdate(
+          'UPDATE accounts SET balance = balance - ? WHERE id = ?',
+          [applied, accountId],
+        );
+        await txn.delete('transactions', where: 'id = ?', whereArgs: [leg['id']]);
+      }
+    });
+
+    await logAudit('transfer', transferId, 'deleted');
+    await _persistAndNotify();
+    return legs.length;
   }
 
   // --- CATEGORIES CRUD ---
@@ -883,7 +1061,7 @@ class DatabaseHelper {
   Future<int> insertCategory(Map<String, dynamic> row) async {
     final db = await database;
     final id = await db.insert('categories', row, conflictAlgorithm: ConflictAlgorithm.replace);
-    FinancialSyncService.instance.notifyMutation();
+    await _persistAndNotify();
     return id;
   }
 
@@ -895,9 +1073,14 @@ class DatabaseHelper {
 
   Future<int> deleteCategory(String id) async {
     final db = await database;
-    // Delete parent category AND any child sub-categories with parent_id == id
-    final count = await db.delete('categories', where: 'id = ? OR parent_id = ?', whereArgs: [id, id]);
-    FinancialSyncService.instance.notifyMutation();
+    // Soft delete parent category AND any child sub-categories with parent_id == id
+    final count = await db.update(
+      'categories',
+      {'is_archived': 1},
+      where: 'id = ? OR parent_id = ?',
+      whereArgs: [id, id],
+    );
+    await _persistAndNotify();
     return count;
   }
 
@@ -911,7 +1094,7 @@ class DatabaseHelper {
   Future<int> insertAccount(Map<String, dynamic> row) async {
     final db = await database;
     final id = await db.insert('accounts', row, conflictAlgorithm: ConflictAlgorithm.replace);
-    FinancialSyncService.instance.notifyMutation();
+    await _persistAndNotify();
     return id;
   }
 
@@ -925,7 +1108,7 @@ class DatabaseHelper {
   Future<int> insertBudget(Map<String, dynamic> row) async {
     final db = await database;
     final id = await db.insert('budgets', row, conflictAlgorithm: ConflictAlgorithm.replace);
-    FinancialSyncService.instance.notifyMutation();
+    await _persistAndNotify();
     return id;
   }
 
@@ -937,7 +1120,7 @@ class DatabaseHelper {
   Future<int> insertGoal(Map<String, dynamic> row) async {
     final db = await database;
     final id = await db.insert('goals', row, conflictAlgorithm: ConflictAlgorithm.replace);
-    FinancialSyncService.instance.notifyMutation();
+    await _persistAndNotify();
     return id;
   }
 
@@ -949,7 +1132,7 @@ class DatabaseHelper {
     await db.delete('goals');
     await db.delete('budget_history');
     await db.execute('VACUUM;');
-    FinancialSyncService.instance.notifyMutation();
+    await _persistAndNotify();
   }
 
   Future<void> _seedFundingAccountsIfMissing(Database db) async {

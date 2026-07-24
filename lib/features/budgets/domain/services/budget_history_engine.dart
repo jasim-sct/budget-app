@@ -149,7 +149,7 @@ class BudgetHistoryEngine {
       );
     }
 
-    FinancialSyncService.instance.notifyMutation();
+    await FinancialSyncService.instance.persistAndNotify();
   }
 
   /// Calculates period-over-period comparison metrics.

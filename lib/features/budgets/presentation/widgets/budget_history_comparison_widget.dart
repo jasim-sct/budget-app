@@ -40,7 +40,7 @@ class BudgetHistoryComparisonWidget extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.cyan.withOpacity(0.15),
+                  color: AppColors.cyan.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -69,7 +69,7 @@ class BudgetHistoryComparisonWidget extends StatelessWidget {
               Container(
                 height: 40,
                 width: 1,
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withValues(alpha: 0.1),
               ),
               Expanded(
                 child: _buildMetricTile(
@@ -146,7 +146,7 @@ class BudgetHistoryComparisonWidget extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             subtext,
-            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 10),
           ),
         ],
       ),

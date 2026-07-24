@@ -100,12 +100,12 @@ class CategoryRepository {
   Future<void> addCategory(CategoryModel category) async {
     await _db.insertCategory(category.toMap());
     await loadCategories();
-    FinancialSyncService.instance.notifyMutation();
+    await FinancialSyncService.instance.persistAndNotify();
   }
 
   Future<void> deleteCategory(String id) async {
     await _db.deleteCategory(id);
     await loadCategories();
-    FinancialSyncService.instance.notifyMutation();
+    await FinancialSyncService.instance.persistAndNotify();
   }
 }

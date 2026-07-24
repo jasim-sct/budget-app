@@ -27,6 +27,6 @@ class GoalRepository {
   Future<void> addGoal(GoalModel goal) async {
     await _db.insertGoal(goal.toMap());
     await loadGoals();
-    FinancialSyncService.instance.notifyMutation();
+    await FinancialSyncService.instance.persistAndNotify();
   }
 }

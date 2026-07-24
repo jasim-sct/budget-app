@@ -137,9 +137,9 @@ class _BudgetOverspendRecoverySheetState extends State<BudgetOverspendRecoverySh
         bottom: 24 + bottomInset,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark.withOpacity(0.95),
+        color: AppColors.surfaceDark.withValues(alpha: 0.95),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border.all(color: AppColors.rose.withOpacity(0.3)),
+        border: Border.all(color: AppColors.rose.withValues(alpha: 0.3)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -183,7 +183,7 @@ class _BudgetOverspendRecoverySheetState extends State<BudgetOverspendRecoverySh
             // Summary Overspend Card
             GlassCard(
               padding: const EdgeInsets.all(16),
-              borderColor: AppColors.rose.withOpacity(0.4),
+              borderColor: AppColors.rose.withValues(alpha: 0.4),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -208,7 +208,7 @@ class _BudgetOverspendRecoverySheetState extends State<BudgetOverspendRecoverySh
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: AppColors.rose.withOpacity(0.2),
+                      color: AppColors.rose.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -250,7 +250,7 @@ class _BudgetOverspendRecoverySheetState extends State<BudgetOverspendRecoverySh
                 : Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppColors.glassBorder),
                     ),

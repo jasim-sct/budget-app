@@ -6,6 +6,8 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../categories/data/category_repository.dart';
+import '../../../categories/domain/category_model.dart';
 import '../../domain/models/budget_model.dart';
 import '../../domain/models/budget_period.dart';
 
@@ -25,17 +27,40 @@ class AddBudgetBottomSheet extends StatefulWidget {
 }
 
 class _AddBudgetBottomSheetState extends State<AddBudgetBottomSheet> {
-  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _limitController = TextEditingController();
+  final TextEditingController _newCategoryController = TextEditingController();
   final BudgetPeriodType _selectedPeriod = BudgetPeriodType.monthly;
   double _calculatedDailyTarget = 0.0;
   double _calculatedWeeklyTarget = 0.0;
   double _calculatedYearlyTarget = 0.0;
 
+  List<CategoryModel> _categories = [];
+  CategoryModel? _selectedCategory;
+  bool _loadingCategories = true;
+  bool _isCreatingNewCategory = false;
+
   @override
   void initState() {
     super.initState();
     _limitController.addListener(_onLimitChanged);
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    final repo = CategoryRepository.instance;
+    await repo.loadCategories();
+    if (!mounted) return;
+    final cats = repo.categoriesNotifier.value
+        .where((c) => !c.isHidden && !c.isArchived)
+        .toList();
+    setState(() {
+      _categories = cats;
+      _selectedCategory = cats.isNotEmpty ? cats.first : null;
+      _loadingCategories = false;
+      if (cats.isEmpty) {
+        _isCreatingNewCategory = true;
+      }
+    });
   }
 
   void _onLimitChanged() {
@@ -52,25 +77,51 @@ class _AddBudgetBottomSheetState extends State<AddBudgetBottomSheet> {
   @override
   void dispose() {
     _limitController.removeListener(_onLimitChanged);
-    _nameController.dispose();
     _limitController.dispose();
+    _newCategoryController.dispose();
     super.dispose();
   }
 
-  void _handleSubmit() {
-    final name = _nameController.text.trim();
+  Future<void> _handleSubmit() async {
     final limit = double.tryParse(_limitController.text.trim());
+    if (limit == null || limit <= 0) return;
 
-    if (name.isNotEmpty && limit != null && limit > 0) {
+    if (_isCreatingNewCategory) {
+      final newName = _newCategoryController.text.trim();
+      if (newName.isEmpty) return;
+
+      final newCat = CategoryModel(
+        id: 'cat_${DateTime.now().millisecondsSinceEpoch}',
+        name: newName,
+        iconCode: 0xe574,
+        colorValue: 0xFF3B82F6,
+        sortOrder: _categories.length + 1,
+      );
+
+      await CategoryRepository.instance.addCategory(newCat);
+
       final budget = BudgetModel(
         id: 'bgt_${DateTime.now().millisecondsSinceEpoch}',
-        name: name,
-        categoryId: 'cat_${name.toLowerCase().replaceAll(' ', '_')}',
+        name: newCat.name,
+        categoryId: newCat.id,
         amountLimit: limit,
         periodType: _selectedPeriod,
       );
       widget.onSubmit(budget);
-      Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
+    } else {
+      final category = _selectedCategory;
+      if (category != null) {
+        final budget = BudgetModel(
+          id: 'bgt_${DateTime.now().millisecondsSinceEpoch}',
+          name: category.name,
+          categoryId: category.id,
+          amountLimit: limit,
+          periodType: _selectedPeriod,
+        );
+        widget.onSubmit(budget);
+        if (mounted) Navigator.pop(context);
+      }
     }
   }
 
@@ -100,7 +151,6 @@ class _AddBudgetBottomSheetState extends State<AddBudgetBottomSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Drag handle
             Center(
               child: Container(
                 width: 36,
@@ -139,7 +189,7 @@ class _AddBudgetBottomSheetState extends State<AddBudgetBottomSheet> {
                   SizedBox(width: AppSpacing.xs),
                   Expanded(
                     child: Text(
-                      'Budgets are configured on a Monthly basis. Daily, Weekly, and Yearly allowances are automatically calculated.',
+                      'Select an existing category or create a new one for automatic safe-spend tracking.',
                       style: TextStyle(fontSize: 11, color: AppColors.primaryBlue, fontWeight: FontWeight.w500),
                     ),
                   ),
@@ -147,12 +197,89 @@ class _AddBudgetBottomSheetState extends State<AddBudgetBottomSheet> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-
-            AppTextField(
-              label: 'CATEGORY NAME',
-              controller: _nameController,
-              hint: 'e.g., Dining & Groceries, Fuel, Entertainment',
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('CATEGORY', style: AppTypography.sectionLabel(isDark)),
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _isCreatingNewCategory = !_isCreatingNewCategory;
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 4.0),
+                    child: Text(
+                      _isCreatingNewCategory ? '← Select Existing' : '+ Create New Category',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryBlue,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: AppSpacing.xs),
+            if (_loadingCategories)
+              const Padding(
+                padding: EdgeInsets.all(AppSpacing.md),
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              )
+            else if (_isCreatingNewCategory)
+              AppTextField(
+                label: 'NEW CATEGORY NAME',
+                controller: _newCategoryController,
+                hint: 'e.g. Subscriptions, Groceries, Fitness',
+              )
+            else if (_categories.isEmpty)
+              Text(
+                'No categories found. Switch to "+ Create New Category" above to add one.',
+                style: AppTypography.caption(isDark),
+              )
+            else
+              DropdownButtonFormField<String>(
+                initialValue: _selectedCategory?.id,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: isDark ? AppColors.darkSurfaceLight : AppColors.lightSurfaceSecondary,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.sm,
+                  ),
+                ),
+                items: [
+                  ..._categories.map(
+                    (c) => DropdownMenuItem(
+                      value: c.id,
+                      child: Text(c.name),
+                    ),
+                  ),
+                  const DropdownMenuItem(
+                    value: '__create_new__',
+                    child: Text(
+                      '+ Create New Category...',
+                      style: TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+                onChanged: (id) {
+                  if (id == '__create_new__') {
+                    setState(() {
+                      _isCreatingNewCategory = true;
+                    });
+                  } else if (id != null) {
+                    setState(() {
+                      _selectedCategory = _categories.firstWhere((c) => c.id == id);
+                    });
+                  }
+                },
+              ),
             const SizedBox(height: AppSpacing.md),
             AppTextField(
               label: 'MONTHLY BUDGET LIMIT (\$)',

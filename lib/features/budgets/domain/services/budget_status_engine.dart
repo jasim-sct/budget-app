@@ -41,7 +41,7 @@ enum BudgetStatusClassification {
   }
 
   Color get badgeBackgroundColor {
-    return primaryColor.withOpacity(0.15);
+    return primaryColor.withValues(alpha: 0.15);
   }
 }
 
@@ -147,17 +147,17 @@ class BudgetStatusEngine {
     final progressPercentage = allocation > 0 ? (spent / allocation * 100.0) : (spent > 0 ? 100.0 : 0.0);
     final remainingPercentage = allocation > 0 ? ((remaining / allocation) * 100.0).clamp(-100.0, 100.0) : 0.0;
 
-    // Daily calculations
+    // Daily calculations — fixed plan = allocation ÷ period days (does not shrink with spend).
     final actualDailySpend = elapsedDays > 0 ? spent / elapsedDays : 0.0;
     final currentBurnRate = actualDailySpend;
-    final dailyTarget = (remaining > 0 && remainingDays > 0) ? (remaining / remainingDays) : 0.0;
+    final idealDailyRate = allocation > 0 ? allocation / totalDays : 0.0;
+    final dailyTarget = idealDailyRate;
 
     // Projections
     final estimatedEndOfPeriodSpending = actualDailySpend * totalDays;
     final expectedOverspend = max(0.0, estimatedEndOfPeriodSpending - allocation);
 
     // Pacing Ratio: ratio of actual burn rate to ideal burn rate
-    final idealDailyRate = allocation > 0 ? allocation / totalDays : 0.0;
     final pacingRatio = idealDailyRate > 0 ? (actualDailySpend / idealDailyRate) : (spent > 0 ? 2.0 : 0.0);
 
     // Variance: spent vs expected benchmark spent up to elapsed days

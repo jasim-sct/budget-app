@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import '../theme/app_motion.dart';
 import '../utils/formatters.dart';
 
-/// Next-Gen Animated Number Text for fluid financial currency/percentage transitions.
+/// Animated number text — communicates “this value changed” without abrupt jumps.
 class AnimatedNumberText extends StatelessWidget {
   final double value;
   final TextStyle style;
@@ -14,8 +15,8 @@ class AnimatedNumberText extends StatelessWidget {
     required this.value,
     required this.style,
     this.formatter,
-    this.duration = const Duration(milliseconds: 600),
-    this.curve = Curves.fastOutSlowIn,
+    this.duration = AppDurations.emphasized,
+    this.curve = AppCurves.emphasized,
   });
 
   @override

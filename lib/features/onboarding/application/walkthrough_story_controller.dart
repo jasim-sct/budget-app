@@ -53,7 +53,7 @@ class WalkthroughStoryController extends ChangeNotifier {
   /// Automatically wipes all test data stored during the walkthrough story
   Future<void> endStoryAndClearData() async {
     await DatabaseHelper.instance.clearAllData();
-    FinancialSyncService.instance.notifyMutation();
+    await FinancialSyncService.instance.persistAndNotify();
     await FinancialCalculationEngine.instance.recalculate();
     _isStoryActive = false;
     _currentChapter = StoryChapter.welcome;
