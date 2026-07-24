@@ -161,7 +161,7 @@ class BudgetDao {
     // 3. Compute BudgetStatusMetrics for each budget
     final List<BudgetSpentSummary> summaries = [];
     for (final budget in activeBudgets) {
-      final keys = budgetCategoryMatchKeys(
+      final keys = budgetCategoryNameKeys(
         budget,
         categoryIdToName: categoryIdToName,
       );
@@ -230,6 +230,30 @@ class BudgetDao {
 
   Future<void> saveBudget(BudgetModel budget) async {
     final db = await _dbHelper.database;
+    final claimed = budget.effectiveCategoryIds.toSet();
+
+    // Enforce one-budget-per-category: take the claimed categories away from
+    // any other active budget. A budget left with no categories is retired.
+    final others = await db.query(
+      DbConstants.tableBudgets,
+      where: 'is_active = 1 AND id != ?',
+      whereArgs: [budget.id],
+    );
+    for (final row in others) {
+      final other = BudgetModel.fromMap(row);
+      final remaining =
+          other.effectiveCategoryIds.where((c) => !claimed.contains(c)).toList();
+      if (remaining.length == other.effectiveCategoryIds.length) continue;
+      if (remaining.isEmpty) {
+        await db.update(DbConstants.tableBudgets, {'is_active': 0},
+            where: 'id = ?', whereArgs: [other.id]);
+      } else {
+        final updated = other.copyWith(categoryIds: remaining, categoryId: remaining.first);
+        await db.insert(DbConstants.tableBudgets, updated.toMap(),
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    }
+
     await db.insert(
       DbConstants.tableBudgets,
       budget.toMap(),

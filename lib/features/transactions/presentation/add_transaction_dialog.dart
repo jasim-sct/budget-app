@@ -448,11 +448,20 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
             ValueListenableBuilder<List<CategoryModel>>(
               valueListenable: CategoryRepository.instance.categoriesNotifier,
               builder: (context, catModels, _) {
-                final catNames = catModels.map((c) => c.name).toList();
-                if (!catNames.contains('Food & Dining')) catNames.insert(0, 'Food & Dining');
-                if (!catNames.contains('Transportation')) catNames.add('Transportation');
-                if (!catNames.contains('Bills & Utilities')) catNames.add('Bills & Utilities');
-                if (!catNames.contains('Salary & Wages')) catNames.add('Salary & Wages');
+                // Build a case-insensitively unique name list so the same
+                // category can never render as two chips.
+                final catNames = <String>[];
+                final seen = <String>{};
+                for (final c in catModels) {
+                  final name = c.name.trim();
+                  if (name.isEmpty) continue;
+                  if (seen.add(name.toLowerCase())) catNames.add(name);
+                }
+                // Only fall back to defaults when there are genuinely no
+                // categories yet (never merge them into an existing list).
+                if (catNames.isEmpty) {
+                  catNames.addAll(const ['Food & Dining', 'Transportation', 'Bills & Utilities', 'Salary & Wages']);
+                }
 
                 return Wrap(
                   spacing: AppSpacing.xs,

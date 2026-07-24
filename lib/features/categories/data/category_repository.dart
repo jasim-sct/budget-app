@@ -20,6 +20,8 @@ class CategoryRepository {
   }
 
   Future<void> loadCategories() async {
+    // Collapse any historical name-duplicates before reading the list.
+    await _db.dedupeCategoriesByName();
     var rawList = await _db.getAllCategories();
     if (rawList.isEmpty) {
       await _seedDefaultCategories();
@@ -97,10 +99,20 @@ class CategoryRepository {
     }
   }
 
-  Future<void> addCategory(CategoryModel category) async {
+  /// Adds a category, or reuses an existing one with the same name
+  /// (case-insensitive). Returns the canonical category so callers wire
+  /// budgets/transactions to the real id instead of creating a duplicate.
+  Future<CategoryModel> addCategory(CategoryModel category) async {
+    final existing = await _db.findCategoryByName(category.name);
+    if (existing != null) {
+      final canonical = CategoryModel.fromMap(existing);
+      await loadCategories();
+      return canonical;
+    }
     await _db.insertCategory(category.toMap());
     await loadCategories();
     await FinancialSyncService.instance.persistAndNotify();
+    return category;
   }
 
   Future<void> deleteCategory(String id) async {

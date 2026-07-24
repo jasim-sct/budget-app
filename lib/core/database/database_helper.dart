@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 import '../services/filter_query_builder.dart';
@@ -46,7 +47,10 @@ class DatabaseHelper {
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
-        await db.execute('PRAGMA journal_mode = WAL;');
+        // journal_mode returns a result row ("wal"); on iOS/macOS the
+        // sqflite_darwin execute() treats that as an error and aborts the
+        // open, so it must run through rawQuery instead.
+        await db.rawQuery('PRAGMA journal_mode = WAL;');
         // FULL forces durable disk flush of each committed frame (app storage).
         await db.execute('PRAGMA synchronous = FULL;');
         await db.execute('PRAGMA foreign_keys = ON;');
@@ -93,6 +97,9 @@ class DatabaseHelper {
         } catch (_) {}
         try {
           await db.execute('ALTER TABLE budgets ADD COLUMN recovered_amount REAL DEFAULT 0.0;');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE budgets ADD COLUMN category_ids TEXT;');
         } catch (_) {}
         try {
           await db.execute('ALTER TABLE budgets ADD COLUMN start_date INTEGER;');
@@ -222,6 +229,7 @@ class DatabaseHelper {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         category_id TEXT NOT NULL,
+        category_ids TEXT,
         category_name TEXT NOT NULL,
         amount_limit REAL NOT NULL,
         envelope_allocated REAL DEFAULT 0.0,
@@ -1058,6 +1066,55 @@ class DatabaseHelper {
     return await db.query('categories', where: 'is_archived = 0', orderBy: 'sort_order ASC, name ASC');
   }
 
+  /// Returns the canonical (non-archived) category row matching [name]
+  /// case-insensitively, or null. Used to keep category creation idempotent
+  /// so preset names never duplicate a seeded category.
+  Future<Map<String, dynamic>?> findCategoryByName(String name) async {
+    final db = await database;
+    final rows = await db.query(
+      'categories',
+      where: 'is_archived = 0 AND LOWER(TRIM(name)) = ?',
+      whereArgs: [name.trim().toLowerCase()],
+      orderBy: 'rowid ASC',
+      limit: 1,
+    );
+    return rows.isEmpty ? null : rows.first;
+  }
+
+  /// Collapses categories that share a name (case-insensitive) into a single
+  /// canonical row — the earliest-inserted one — repointing any budgets and
+  /// child sub-categories to it, then deleting the duplicates. Idempotent and
+  /// cheap (category count is tiny); safe to run on every load. Fixes rows
+  /// created before category creation was made name-idempotent, e.g. the
+  /// seeded 'cat_utilities' vs a budget-created 'cat_bills_&_utilities'.
+  Future<void> dedupeCategoriesByName() async {
+    final db = await database;
+    final rows = await db.query('categories', where: 'is_archived = 0', orderBy: 'rowid ASC');
+    final Map<String, String> canonicalIdByName = {};
+    var removed = 0;
+
+    for (final row in rows) {
+      final name = (row['name'] as String? ?? '').trim().toLowerCase();
+      final id = row['id'] as String;
+      if (name.isEmpty) continue;
+
+      final canonical = canonicalIdByName[name];
+      if (canonical == null) {
+        canonicalIdByName[name] = id;
+      } else if (canonical != id) {
+        // Repoint dependents to the canonical row, then drop the duplicate.
+        await db.update('budgets', {'category_id': canonical}, where: 'category_id = ?', whereArgs: [id]);
+        await db.update('categories', {'parent_id': canonical}, where: 'parent_id = ?', whereArgs: [id]);
+        await db.delete('categories', where: 'id = ?', whereArgs: [id]);
+        removed++;
+      }
+    }
+
+    if (removed > 0) {
+      await forcePersistToDisk();
+    }
+  }
+
   Future<int> insertCategory(Map<String, dynamic> row) async {
     final db = await database;
     final id = await db.insert('categories', row, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -1110,6 +1167,54 @@ class DatabaseHelper {
     final id = await db.insert('budgets', row, conflictAlgorithm: ConflictAlgorithm.replace);
     await _persistAndNotify();
     return id;
+  }
+
+  /// Category ids that already belong to an active budget (union across each
+  /// budget's full category set). The Add-Budget picker hides these so a
+  /// category maps to at most one budget.
+  Future<Set<String>> getBudgetedCategoryIds() async {
+    final db = await database;
+    final rows = await db.query(
+      'budgets',
+      columns: ['category_id', 'category_ids'],
+      where: 'is_active = 1',
+    );
+    final ids = <String>{};
+    for (final r in rows) {
+      final raw = r['category_ids'];
+      if (raw is String && raw.trim().isNotEmpty) {
+        try {
+          for (final e in (jsonDecode(raw) as List)) {
+            final s = e.toString().trim();
+            if (s.isNotEmpty) ids.add(s);
+          }
+          continue;
+        } catch (_) {}
+      }
+      final single = (r['category_id'] as String? ?? '').trim();
+      if (single.isNotEmpty) ids.add(single);
+    }
+    return ids;
+  }
+
+  /// Keeps a single active budget per category (earliest wins), soft-deleting
+  /// any extras. Never touches the categories table. Idempotent.
+  Future<void> dedupeActiveBudgetsByCategory() async {
+    final db = await database;
+    final rows = await db.query('budgets', where: 'is_active = 1', orderBy: 'rowid ASC');
+    final seen = <String>{};
+    var changed = 0;
+    for (final row in rows) {
+      final catId = (row['category_id'] as String? ?? '').trim();
+      if (catId.isEmpty) continue;
+      if (seen.contains(catId)) {
+        await db.update('budgets', {'is_active': 0}, where: 'id = ?', whereArgs: [row['id']]);
+        changed++;
+      } else {
+        seen.add(catId);
+      }
+    }
+    if (changed > 0) await forcePersistToDisk();
   }
 
   Future<List<Map<String, dynamic>>> getAllGoals() async {

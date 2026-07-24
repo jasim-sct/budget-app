@@ -56,6 +56,9 @@ class UserSettingsStore {
   Future<String?> getThemeMode() => get(AppConstants.keyThemeMode);
   Future<void> setThemeMode(String mode) => set(AppConstants.keyThemeMode, mode);
 
+  Future<String?> getUserName() => get(AppConstants.keyUserName);
+  Future<void> setUserName(String name) => set(AppConstants.keyUserName, name);
+
   Future<String?> getPin() => get(AppConstants.keyUserPin);
   Future<void> setPin(String pin) => set(AppConstants.keyUserPin, pin);
   Future<void> clearPin() => remove(AppConstants.keyUserPin);

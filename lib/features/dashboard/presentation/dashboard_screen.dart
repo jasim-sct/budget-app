@@ -5,6 +5,7 @@ import '../../../core/services/financial_metrics.dart';
 import '../../../core/services/financial_sync_service.dart';
 import '../../../core/services/intent_decision_engine.dart';
 import '../../../core/services/time_context_engine.dart';
+import '../../../core/services/user_profile_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
@@ -129,9 +130,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
                           const SizedBox(height: 1),
-                          Text(
-                            'Alex',
-                            style: AppTypography.headline(isDark),
+                          ValueListenableBuilder<String>(
+                            valueListenable: UserProfileProvider.instance,
+                            builder: (context, name, _) => Text(
+                              UserProfileProvider.instance.firstName,
+                              style: AppTypography.headline(isDark),
+                            ),
                           ),
                         ],
                       ),

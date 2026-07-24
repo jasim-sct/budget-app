@@ -96,15 +96,17 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
       colorValue: _selectedColor,
     );
 
-    await CategoryRepository.instance.addCategory(newCat);
+    // Reuse an existing same-named category instead of duplicating it.
+    final canonical = await CategoryRepository.instance.addCategory(newCat);
 
     final limit = double.tryParse(_limitController.text.trim());
     if (limit != null && limit > 0) {
       final budgetDao = BudgetDao(AppDatabase.instance);
+      // One budget per category: replace the existing one rather than stacking.
       final budget = BudgetModel(
-        id: 'bgt_${DateTime.now().millisecondsSinceEpoch}',
-        name: name,
-        categoryId: catId,
+        id: 'bgt_${canonical.id}',
+        name: canonical.name,
+        categoryId: canonical.id,
         amountLimit: limit,
       );
       await budgetDao.insertBudget(budget);

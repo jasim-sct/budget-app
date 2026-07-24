@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../core/database/app_database.dart';
+import '../core/database/database_helper.dart';
 import '../core/services/currency_provider.dart';
+import '../core/services/user_profile_provider.dart';
+import '../features/categories/data/category_repository.dart';
 import '../core/services/financial_calculation_engine.dart';
 import '../core/services/financial_sync_service.dart';
 import '../core/services/pin_auth_service.dart';
@@ -66,6 +69,7 @@ class _MainAppShellState extends State<_MainAppShell> {
   bool _requirePinUnlock = false;
   String? _storedPin;
   int _currentIndex = 0;
+  final PageController _pageController = PageController();
 
   late final TransactionRepository _transactionRepository;
   late final AccountsController _accountsController;
@@ -90,10 +94,40 @@ class _MainAppShellState extends State<_MainAppShell> {
   Future<void> _loadPersistedSettings() async {
     await ThemeProvider.instance.loadSavedTheme();
     await CurrencyProvider.instance.loadSavedCurrency();
+    await UserProfileProvider.instance.loadSavedName();
+    // Collapse any historical duplicate categories/budgets at startup so they
+    // never surface, regardless of which screen the user opens first.
+    await CategoryRepository.instance.loadCategories();
+    await DatabaseHelper.instance.dedupeActiveBudgetsByCategory();
+  }
+
+  void _goToTab(int index) {
+    if (_pageController.hasClients) {
+      _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      setState(() => _currentIndex = index);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _onSplashComplete() async {
-    final pin = await PinAuthService.instance.getPin();
+    String? pin;
+    try {
+      pin = await PinAuthService.instance.getPin();
+    } catch (_) {
+      // Never trap the user on the splash screen if storage fails —
+      // proceed without a PIN requirement.
+      pin = null;
+    }
     if (!mounted) return;
     setState(() {
       _showSplash = false;
@@ -236,19 +270,23 @@ class _MainAppShellState extends State<_MainAppShell> {
 
     return Scaffold(
       extendBody: false,
-      body: IndexedStack(
-        index: _currentIndex,
+      body: PageView(
+        controller: _pageController,
+        physics: const BouncingScrollPhysics(),
+        onPageChanged: (index) => setState(() => _currentIndex = index),
         children: [
-          DashboardScreen(
-            repository: _transactionRepository,
-            onNavigateToLedger: () => setState(() => _currentIndex = 1),
-            onNavigateToWallets: () => setState(() => _currentIndex = 3),
-            onNavigateToBudgets: () => setState(() => _currentIndex = 2),
-            onNavigateToAnalytics: () => setState(() => _currentIndex = 2),
+          _KeepAlivePage(
+            child: DashboardScreen(
+              repository: _transactionRepository,
+              onNavigateToLedger: () => _goToTab(1),
+              onNavigateToWallets: () => _goToTab(3),
+              onNavigateToBudgets: () => _goToTab(2),
+              onNavigateToAnalytics: () => _goToTab(2),
+            ),
           ),
-          TransactionsScreen(repository: _transactionRepository),
-          BudgetsScreen(controller: _budgetsController),
-          AccountsScreen(controller: _accountsController),
+          _KeepAlivePage(child: TransactionsScreen(repository: _transactionRepository)),
+          _KeepAlivePage(child: BudgetsScreen(controller: _budgetsController)),
+          _KeepAlivePage(child: AccountsScreen(controller: _accountsController)),
         ],
       ),
       bottomNavigationBar: Column(
@@ -257,7 +295,7 @@ class _MainAppShellState extends State<_MainAppShell> {
           ContextActionBar(actions: _getActionsForScreen(_currentIndex)),
           GlassBottomBar(
             currentIndex: _currentIndex,
-            onTap: (index) => setState(() => _currentIndex = index),
+            onTap: _goToTab,
             items: const [
               NavItem(
                 icon: Icons.home_outlined,
@@ -284,5 +322,27 @@ class _MainAppShellState extends State<_MainAppShell> {
         ],
       ),
     );
+  }
+}
+
+/// Keeps a PageView child alive when swiped off-screen so tab state
+/// (scroll position, controllers) survives horizontal navigation.
+class _KeepAlivePage extends StatefulWidget {
+  final Widget child;
+  const _KeepAlivePage({required this.child});
+
+  @override
+  State<_KeepAlivePage> createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<_KeepAlivePage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }

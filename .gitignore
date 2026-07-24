@@ -44,3 +44,9 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 push_code.bat
+
+# LibreOffice / editor lock files
+.~lock.*#
+
+# Local reinstall helper log
+reinstall.log

@@ -9,6 +9,7 @@ abstract class AppConstants {
   static const int maxRecentItems = 10;
   
   // Storage Keys
+  static const String keyUserName = 'user_name';
   static const String keyUserPin = 'user_pin_hash';
   static const String keyBiometricsEnabled = 'use_biometrics';
   static const String keyThemeMode = 'theme_mode';

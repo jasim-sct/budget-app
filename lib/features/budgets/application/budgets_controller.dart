@@ -1,3 +1,4 @@
+import '../../../core/database/database_helper.dart';
 import '../../../core/services/financial_sync_service.dart';
 import '../../../core/state/micro_notifier.dart';
 import '../../../core/state/month_selector_controller.dart';
@@ -92,6 +93,8 @@ class BudgetsController {
     stateNotifier.update(stateNotifier.value.copyWith(isLoading: true));
 
     try {
+      // Collapse any duplicate budgets sharing a category (never touches categories).
+      await DatabaseHelper.instance.dedupeActiveBudgetsByCategory();
       final activeDate = MonthSelectorController.instance.value;
       final selectedPeriod = stateNotifier.value.selectedPeriod;
       final now = DateTime.now();
