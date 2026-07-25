@@ -14,6 +14,7 @@ import '../../../core/widgets/animated_number_text.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/calculation_explanation_modal.dart';
 import '../../../core/widgets/intent_card.dart';
+import '../../calendar/presentation/spending_heatmap_calendar_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../transactions/data/transaction_repository.dart';
 import '../../transactions/presentation/widgets/transaction_item_tile.dart';
@@ -146,6 +147,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         _HeaderIconButton(
                           icon: _hideBalance ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                           onTap: () => setState(() => _hideBalance = !_hideBalance),
+                          isDark: isDark,
+                        ),
+                        _HeaderIconButton(
+                          icon: Icons.calendar_month_outlined,
+                          onTap: () {
+                            AppRouter.push(
+                              context,
+                              SpendingHeatmapCalendarScreen(repository: widget.repository),
+                            );
+                          },
                           isDark: isDark,
                         ),
                         const SizedBox(width: 4),

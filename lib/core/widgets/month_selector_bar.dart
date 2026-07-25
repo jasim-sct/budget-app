@@ -10,10 +10,11 @@ class MonthSelectorBar extends StatelessWidget {
   const MonthSelectorBar({super.key});
 
   Future<void> _showMonthPicker(BuildContext context, DateTime current) async {
+    final installStart = MonthSelectorController.instance.installMonthStart;
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: current,
-      firstDate: DateTime(2020),
+      initialDate: current.isBefore(installStart) ? installStart : current,
+      firstDate: installStart,
       lastDate: DateTime(2035),
       initialDatePickerMode: DatePickerMode.year,
       builder: (context, child) {
@@ -58,8 +59,16 @@ class MonthSelectorBar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.chevron_left_rounded, size: 20),
-                onPressed: () => MonthSelectorController.instance.previousMonth(),
+                icon: Icon(
+                  Icons.chevron_left_rounded,
+                  size: 20,
+                  color: MonthSelectorController.instance.isAtInstallMonth
+                      ? (isDark ? Colors.white24 : Colors.black26)
+                      : null,
+                ),
+                onPressed: MonthSelectorController.instance.isAtInstallMonth
+                    ? null
+                    : () => MonthSelectorController.instance.previousMonth(),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               ),

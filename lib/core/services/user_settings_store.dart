@@ -70,4 +70,26 @@ class UserSettingsStore {
       getBool(AppConstants.keyBiometricsEnabled, defaultValue: false);
   Future<void> setBiometricsEnabled(bool enabled) =>
       setBool(AppConstants.keyBiometricsEnabled, enabled);
+
+  static const String keyAppInstallDate = 'app_install_date_ms';
+
+  /// Returns the date when the app was installed/first launched.
+  Future<DateTime> getAppInstallDate() async {
+    final raw = await get(keyAppInstallDate);
+    if (raw != null) {
+      final ms = int.tryParse(raw);
+      if (ms != null) {
+        return DateTime.fromMillisecondsSinceEpoch(ms);
+      }
+    }
+    final now = DateTime.now();
+    await set(keyAppInstallDate, now.millisecondsSinceEpoch.toString());
+    return now;
+  }
+
+  /// Returns the 1st day of the month when the app was installed.
+  Future<DateTime> getAppInstallMonthStart() async {
+    final installDate = await getAppInstallDate();
+    return DateTime(installDate.year, installDate.month, 1);
+  }
 }

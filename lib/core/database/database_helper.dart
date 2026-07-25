@@ -5,6 +5,7 @@ import 'package:sqflite/sqflite.dart';
 import '../services/filter_query_builder.dart';
 import '../services/financial_sync_service.dart';
 import '../services/global_filter_state.dart';
+import '../storage/external_storage_service.dart';
 
 /// Commercial-grade SQLite Database Engine (Version 3).
 /// Single source of truth master ledger supporting sub-categories, multi-currency exchange rates,
@@ -12,6 +13,7 @@ import '../services/global_filter_state.dart';
 class DatabaseHelper {
   static DatabaseHelper? _instance;
   static Database? _database;
+  static String? _activeDbPath;
 
   DatabaseHelper._internal();
 
@@ -26,6 +28,13 @@ class DatabaseHelper {
     return _database!;
   }
 
+  /// Returns the current active database file path on disk.
+  Future<String> get activeDbPath async {
+    if (_activeDbPath != null) return _activeDbPath!;
+    await database;
+    return _activeDbPath!;
+  }
+
   /// Forces WAL pages into the main DB file on disk (app-private storage).
   Future<void> forcePersistToDisk() async {
     final db = await database;
@@ -35,11 +44,26 @@ class DatabaseHelper {
   Future<void> _persistAndNotify() async {
     await forcePersistToDisk();
     FinancialSyncService.instance.notifyMutation();
+    if (_activeDbPath != null) {
+      unawaited(ExternalStorageService.instance.mirrorDetachedBackup(
+        activeDbPath: _activeDbPath!,
+      ));
+    }
   }
 
   Future<Database> _initDatabase() async {
-    final dbPath = await getDatabasesPath();
-    final path = p.join(dbPath, 'budget_lite_enterprise_v3.db');
+    String path;
+    try {
+      path = await ExternalStorageService.instance.getDetachedDatabasePath();
+    } catch (_) {
+      final dbPath = await getDatabasesPath();
+      path = p.join(dbPath, 'budget_lite_enterprise_v3.db');
+    }
+
+    _activeDbPath = path;
+
+    // Check and restore detached backup snapshot if fresh install after app uninstall
+    await ExternalStorageService.instance.restoreDetachedBackupIfAvailable(path);
 
     return await openDatabase(
       path,
@@ -301,228 +325,7 @@ class DatabaseHelper {
   }
 
   Future<void> _seedEnterpriseDefaults(Database db) async {
-    final batch = db.batch();
-
-    // Default Accounts with Initial Balances & Ledger Entries
-    final nowTime = DateTime.now().millisecondsSinceEpoch;
-
-    batch.insert('accounts', {
-      'id': 'acc_cash',
-      'name': 'Cash Wallet',
-      'type': 'Cash',
-      'balance': 350.0,
-      'opening_balance': 350.0,
-      'credit_limit': 0.0,
-      'currency': 'USD',
-      'color_value': 0xFF10B981,
-      'is_active': 1,
-      'updated_at': nowTime,
-      'initial_principal': 350.0,
-    });
-
-    batch.insert('accounts', {
-      'id': 'acc_checking',
-      'name': 'Main Checking',
-      'type': 'Checking',
-      'balance': 2500.0,
-      'opening_balance': 2500.0,
-      'credit_limit': 0.0,
-      'currency': 'USD',
-      'color_value': 0xFF2563EB,
-      'is_active': 1,
-      'updated_at': nowTime,
-      'initial_principal': 2500.0,
-    });
-
-    batch.insert('accounts', {
-      'id': 'acc_credit',
-      'name': 'Sapphire Credit Card',
-      'type': 'Credit Card',
-      'balance': 0.0,
-      'opening_balance': 0.0,
-      'credit_limit': 5000.0,
-      'currency': 'USD',
-      'color_value': 0xFFEC4899,
-      'is_active': 1,
-      'updated_at': nowTime,
-      'initial_principal': 0.0,
-    });
-
-    batch.insert('accounts', {
-      'id': 'acc_savings',
-      'name': 'High-Yield Savings',
-      'type': 'Savings',
-      'balance': 7500.0,
-      'opening_balance': 7500.0,
-      'credit_limit': 0.0,
-      'currency': 'USD',
-      'color_value': 0xFF8B5CF6,
-      'is_active': 1,
-      'updated_at': nowTime,
-      'initial_principal': 7500.0,
-    });
-
-    // Default Initial Ledger Transactions for Seeded Accounts
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
-    final month = DateTime.now().month;
-    final year = DateTime.now().year;
-
-    batch.insert('transactions', {
-      'title': 'Initial Balance - Cash Wallet',
-      'amount': 350.0,
-      'date': nowMs - 86400000,
-      'month': month,
-      'year': year,
-      'category': 'Salary & Income',
-      'type': 1, // Income
-      'account_id': 'acc_cash',
-      'account_name': 'Cash Wallet',
-      'payment_method': 'Cash',
-      'notes': 'Opening balance transaction',
-      'currency': 'USD',
-      'status': 'cleared',
-    });
-
-    batch.insert('transactions', {
-      'title': 'Initial Balance - Main Checking',
-      'amount': 2500.0,
-      'date': nowMs - 86400000,
-      'month': month,
-      'year': year,
-      'category': 'Salary & Income',
-      'type': 1, // Income
-      'account_id': 'acc_checking',
-      'account_name': 'Main Checking',
-      'payment_method': 'Direct Deposit',
-      'notes': 'Opening balance transaction',
-      'currency': 'USD',
-      'status': 'cleared',
-    });
-
-    batch.insert('transactions', {
-      'title': 'Initial Balance - High-Yield Savings',
-      'amount': 7500.0,
-      'date': nowMs - 86400000,
-      'month': month,
-      'year': year,
-      'category': 'Salary & Income',
-      'type': 1, // Income
-      'account_id': 'acc_savings',
-      'account_name': 'High-Yield Savings',
-      'payment_method': 'Bank Transfer',
-      'notes': 'Opening balance transaction',
-      'currency': 'USD',
-      'status': 'cleared',
-    });
-
-    // Parent System Categories
-    final defaultParentCats = [
-      {'id': 'cat_food', 'name': 'Food & Dining', 'type': 0, 'icon': 0xe25a, 'color': 0xFFDC2626},
-      {'id': 'cat_transport', 'name': 'Transportation', 'type': 0, 'icon': 0xe1d5, 'color': 0xFFF59E0B},
-      {'id': 'cat_utilities', 'name': 'Bills & Utilities', 'type': 0, 'icon': 0xe57d, 'color': 0xFF8B5CF6},
-      {'id': 'cat_housing', 'name': 'Housing & Rent', 'type': 0, 'icon': 0xe318, 'color': 0xFF10B981},
-      {'id': 'cat_shopping', 'name': 'Shopping', 'type': 0, 'icon': 0xe59c, 'color': 0xFFEC4899},
-      {'id': 'cat_entertainment', 'name': 'Entertainment', 'type': 0, 'icon': 0xe40f, 'color': 0xFF06B6D4},
-      {'id': 'cat_salary', 'name': 'Salary & Income', 'type': 1, 'icon': 0xe000, 'color': 0xFF059669},
-      {'id': 'cat_investments', 'name': 'Investments', 'type': 1, 'icon': 0xe850, 'color': 0xFF6366F1},
-    ];
-
-    for (final cat in defaultParentCats) {
-      batch.insert('categories', {
-        'id': cat['id'],
-        'name': cat['name'],
-        'type': cat['type'],
-        'icon_code': cat['icon'],
-        'color_value': cat['color'],
-        'parent_id': null,
-        'is_favorite': 1,
-        'is_hidden': 0,
-        'is_archived': 0,
-        'sort_order': 0,
-        'description': 'Parent system category',
-      });
-    }
-
-    // Sub-Categories
-    final defaultSubCats = [
-      {'id': 'sub_groceries', 'parent_id': 'cat_food', 'name': 'Groceries', 'type': 0, 'icon': 0xe59c, 'color': 0xFFDC2626},
-      {'id': 'sub_restaurants', 'parent_id': 'cat_food', 'name': 'Restaurants', 'type': 0, 'icon': 0xe25a, 'color': 0xFFDC2626},
-      {'id': 'sub_coffee', 'parent_id': 'cat_food', 'name': 'Coffee & Cafe', 'type': 0, 'icon': 0xe25a, 'color': 0xFFDC2626},
-      {'id': 'sub_fuel', 'parent_id': 'cat_transport', 'name': 'Fuel & Gas', 'type': 0, 'icon': 0xe1d5, 'color': 0xFFF59E0B},
-      {'id': 'sub_rideshare', 'parent_id': 'cat_transport', 'name': 'Uber & Taxi', 'type': 0, 'icon': 0xe1d5, 'color': 0xFFF59E0B},
-    ];
-
-    for (final sub in defaultSubCats) {
-      batch.insert('categories', {
-        'id': sub['id'],
-        'name': sub['name'],
-        'type': sub['type'],
-        'icon_code': sub['icon'],
-        'color_value': sub['color'],
-        'parent_id': sub['parent_id'],
-        'is_favorite': 0,
-        'is_hidden': 0,
-        'is_archived': 0,
-        'sort_order': 0,
-        'description': 'Sub-category',
-      });
-    }
-
-    // Default Budgets
-    batch.insert('budgets', {
-      'id': 'bgt_food',
-      'name': 'Food & Dining',
-      'category_id': 'cat_food',
-      'category_name': 'Food & Dining',
-      'amount_limit': 650.0,
-      'envelope_allocated': 650.0,
-      'carry_forward': 1,
-      'period_type': 'Monthly',
-      'alert_threshold': 0.8,
-      'is_active': 1,
-      'month': DateTime.now().month,
-      'year': DateTime.now().year,
-    });
-
-    batch.insert('budgets', {
-      'id': 'bgt_transport',
-      'name': 'Transportation',
-      'category_id': 'cat_transport',
-      'category_name': 'Transportation',
-      'amount_limit': 300.0,
-      'envelope_allocated': 300.0,
-      'carry_forward': 0,
-      'period_type': 'Monthly',
-      'alert_threshold': 0.8,
-      'is_active': 1,
-      'month': DateTime.now().month,
-      'year': DateTime.now().year,
-    });
-
-    // Default Goals
-    batch.insert('goals', {
-      'id': 'goal_emergency',
-      'title': 'Emergency Reserve',
-      'target_amount': 10000.0,
-      'current_amount': 7500.0,
-      'target_date': DateTime.now().add(const Duration(days: 180)).millisecondsSinceEpoch,
-      'category': 'Savings',
-      'account_id': 'acc_savings',
-      'is_completed': 0,
-    });
-
-    batch.insert('goals', {
-      'id': 'goal_vacation',
-      'title': 'Japan Summer Trip',
-      'target_amount': 3500.0,
-      'current_amount': 1800.0,
-      'target_date': DateTime.now().add(const Duration(days: 120)).millisecondsSinceEpoch,
-      'category': 'Travel',
-      'account_id': 'acc_savings',
-      'is_completed': 0,
-    });
-
-    await batch.commit(noResult: true);
+    // Zero pre-data: application starts completely clean.
   }
 
   // --- AUDIT LOGGING ENGINE ---
@@ -1233,90 +1036,17 @@ class DatabaseHelper {
     final db = await database;
     await db.delete('transactions');
     await db.delete('accounts');
+    await db.delete('categories');
     await db.delete('budgets');
     await db.delete('goals');
+    await db.delete('audit_logs');
     await db.delete('budget_history');
     await db.execute('VACUUM;');
     await _persistAndNotify();
   }
 
   Future<void> _seedFundingAccountsIfMissing(Database db) async {
-    final nowTime = DateTime.now().millisecondsSinceEpoch;
-
-    final accountsToEnsure = [
-      {
-        'id': 'acc_wife',
-        'name': 'Wife Wallet',
-        'type': 'Checking',
-        'balance': 1500.0,
-        'opening_balance': 1500.0,
-        'credit_limit': 0.0,
-        'currency': 'USD',
-        'color_value': 0xFFF43F5E,
-        'is_active': 1,
-        'updated_at': nowTime,
-        'initial_principal': 1500.0,
-      },
-      {
-        'id': 'acc_son',
-        'name': 'Son Wallet',
-        'type': 'Savings',
-        'balance': 500.0,
-        'opening_balance': 500.0,
-        'credit_limit': 0.0,
-        'currency': 'USD',
-        'color_value': 0xFF0EA5E9,
-        'is_active': 1,
-        'updated_at': nowTime,
-        'initial_principal': 500.0,
-      },
-      {
-        'id': 'acc_daughter',
-        'name': 'Daughter Wallet',
-        'type': 'Savings',
-        'balance': 500.0,
-        'opening_balance': 500.0,
-        'credit_limit': 0.0,
-        'currency': 'USD',
-        'color_value': 0xFFA855F7,
-        'is_active': 1,
-        'updated_at': nowTime,
-        'initial_principal': 500.0,
-      },
-      {
-        'id': 'acc_investment',
-        'name': 'Investment Portfolio',
-        'type': 'Investment',
-        'balance': 10000.0,
-        'opening_balance': 10000.0,
-        'credit_limit': 0.0,
-        'currency': 'USD',
-        'color_value': 0xFF10B981,
-        'is_active': 1,
-        'updated_at': nowTime,
-        'initial_principal': 10000.0,
-      },
-      {
-        'id': 'acc_emergency',
-        'name': 'Emergency Reserve',
-        'type': 'Savings',
-        'balance': 5000.0,
-        'opening_balance': 5000.0,
-        'credit_limit': 0.0,
-        'currency': 'USD',
-        'color_value': 0xFFEAB308,
-        'is_active': 1,
-        'updated_at': nowTime,
-        'initial_principal': 5000.0,
-      },
-    ];
-
-    for (final acc in accountsToEnsure) {
-      final existing = await db.query('accounts', where: 'id = ?', whereArgs: [acc['id']]);
-      if (existing.isEmpty) {
-        await db.insert('accounts', acc);
-      }
-    }
+    // Zero pre-data.
   }
 
   // --- BUDGET HISTORY CRUD ---

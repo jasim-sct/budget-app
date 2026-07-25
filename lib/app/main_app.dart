@@ -7,6 +7,7 @@ import '../features/categories/data/category_repository.dart';
 import '../core/services/financial_calculation_engine.dart';
 import '../core/services/financial_sync_service.dart';
 import '../core/services/pin_auth_service.dart';
+import '../core/services/user_settings_store.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/theme_provider.dart';
 import '../core/widgets/context_action_bar.dart';
@@ -92,6 +93,11 @@ class _MainAppShellState extends State<_MainAppShell> {
   }
 
   Future<void> _loadPersistedSettings() async {
+    final preDataCleared = await UserSettingsStore.instance.getBool('pre_data_cleared_v1', defaultValue: false);
+    if (!preDataCleared) {
+      await DatabaseHelper.instance.clearAllData();
+      await UserSettingsStore.instance.setBool('pre_data_cleared_v1', true);
+    }
     await ThemeProvider.instance.loadSavedTheme();
     await CurrencyProvider.instance.loadSavedCurrency();
     await UserProfileProvider.instance.loadSavedName();

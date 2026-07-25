@@ -17,6 +17,7 @@ import '../../developer_settings/presentation/screens/developer_settings_screen.
 import '../../onboarding/application/walkthrough_story_controller.dart';
 import '../../transactions/data/transaction_repository.dart';
 import '../../transactions/domain/transaction_model.dart';
+import 'widgets/detached_storage_card.dart';
 
 /// Profile & Settings Screen.
 class SettingsScreen extends StatelessWidget {
@@ -26,34 +27,6 @@ class SettingsScreen extends StatelessWidget {
     super.key,
     required this.repository,
   });
-
-  Future<void> _seedTestData(BuildContext context) async {
-    final db = DatabaseHelper.instance;
-    final categories = ['Food', 'Transport', 'Utilities', 'Shopping', 'Salary'];
-
-    final now = DateTime.now().millisecondsSinceEpoch;
-    for (int i = 0; i < 500; i++) {
-      final isIncome = i % 10 == 0;
-      await db.insertTransaction(
-        TransactionModel(
-          title: isIncome ? 'Salary Credit #$i' : 'Expense Payment #$i',
-          amount: (i % 50 + 1) * 10.5,
-          dateMilliseconds: now - (i * 3600000),
-          category: categories[i % categories.length],
-          type: isIncome ? TransactionType.income : TransactionType.expense,
-          accountId: 'acc_cash',
-          accountName: 'Cash Wallet',
-        ).toMap(),
-      );
-    }
-
-    await repository.loadInitialData();
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Seeded 500 transactions for performance testing')),
-      );
-    }
-  }
 
   Future<void> _vacuumDatabase(BuildContext context) async {
     final db = await DatabaseHelper.instance.database;
@@ -506,13 +479,15 @@ class SettingsScreen extends StatelessWidget {
           ),
 
           const SizedBox(height: AppSpacing.lg),
-          Text('DATA BACKUP & RESTORE', style: AppTypography.sectionLabel(isDark)),
+          Text('DETACHED MOBILE STORAGE & DATA PROTECTION', style: AppTypography.sectionLabel(isDark)),
           const SizedBox(height: AppSpacing.xs),
+          DetachedStorageCard(isDark: isDark),
+          const SizedBox(height: AppSpacing.sm),
           _buildOptionTile(
             context: context,
             icon: Icons.backup_rounded,
-            title: 'Back Up to Files',
-            subtitle: 'Save all data outside the app — survives reinstall',
+            title: 'Export Manual Snapshot',
+            subtitle: 'Save an additional JSON copy to external storage',
             onTap: () => _backupToFiles(context),
             isDark: isDark,
           ),
@@ -569,15 +544,6 @@ class SettingsScreen extends StatelessWidget {
                 const SnackBar(content: Text('RAM & Image Caches Purged')),
               );
             },
-            isDark: isDark,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          _buildOptionTile(
-            context: context,
-            icon: Icons.speed_rounded,
-            title: 'Seed 500 Test Items',
-            subtitle: 'Benchmark 60 FPS scrolling & pagination',
-            onTap: () => _seedTestData(context),
             isDark: isDark,
           ),
           const SizedBox(height: AppSpacing.xs),

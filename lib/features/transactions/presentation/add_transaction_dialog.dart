@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/services/user_settings_store.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/app_text_field.dart';
@@ -40,6 +42,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
 
   late TransactionType _selectedType;
   late String _selectedCategory;
+  DateTime _selectedDate = DateTime.now();
 
   List<AccountModel> _accounts = [];
   List<BudgetSpentSummary> _budgetSummaries = [];
@@ -60,6 +63,23 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
     CategoryRepository.instance.loadCategories();
     _loadAccounts();
     _loadBudgets();
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final installMonthStart = await UserSettingsStore.instance.getAppInstallMonthStart();
+    if (!mounted) return;
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate.isBefore(installMonthStart) ? installMonthStart : _selectedDate,
+      firstDate: installMonthStart,
+      lastDate: DateTime(2100),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
   }
 
   Future<void> _loadBudgets() async {
@@ -169,7 +189,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
     final transaction = TransactionModel(
       title: title,
       amount: amount,
-      dateMilliseconds: DateTime.now().millisecondsSinceEpoch,
+      dateMilliseconds: _selectedDate.millisecondsSinceEpoch,
       category: category,
       type: _selectedType,
       accountId: _selectedAccountId ?? 'acc_cash',
@@ -328,6 +348,44 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                   ),
                 ],
               ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // Date Selector Field (Defaults to Today)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('TRANSACTION DATE', style: AppTypography.sectionLabel(isDark)),
+                GestureDetector(
+                  onTap: () => _selectDate(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBlue.withOpacity(0.12),
+                      borderRadius: AppRadius.borderXs,
+                      border: Border.all(
+                        color: AppColors.primaryBlue.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.calendar_today_rounded, size: 14, color: AppColors.primaryBlue),
+                        const SizedBox(width: 6),
+                        Text(
+                          AppFormatters.date(_selectedDate),
+                          style: AppTypography.caption(isDark).copyWith(
+                            color: AppColors.primaryBlue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.edit_rounded, size: 12, color: AppColors.primaryBlue),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.md),
 
