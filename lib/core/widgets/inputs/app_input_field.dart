@@ -142,10 +142,14 @@ class _AppTextFieldState extends State<AppTextField> {
                     valueListenable: CurrencyProvider.instance,
                     builder: (context, currency, _) {
                       return Padding(
-                        padding: const EdgeInsets.only(left: AppSpacing.md, right: AppSpacing.sm, top: 10),
-                        child: Text(
-                          currency.symbol,
-                          style: AppTypography.currency(isDark, fontSize: 18, color: AppColors.primaryBlue),
+                        padding: const EdgeInsets.only(left: AppSpacing.md, right: AppSpacing.xs),
+                        child: Center(
+                          widthFactor: 1.0,
+                          heightFactor: 1.0,
+                          child: Text(
+                            currency.symbol,
+                            style: AppTypography.currency(isDark, fontSize: 18, color: AppColors.primaryBlue),
+                          ),
                         ),
                       );
                     },

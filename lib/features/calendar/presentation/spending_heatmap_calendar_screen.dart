@@ -65,6 +65,7 @@ class SpendingHeatmapCalendarScreen extends StatefulWidget {
 }
 
 class _SpendingHeatmapCalendarScreenState extends State<SpendingHeatmapCalendarScreen> {
+  final ScrollController _scrollController = ScrollController();
   CalendarViewMode _viewMode = CalendarViewMode.day;
   DateTime _focusedDate = DateTime.now();
   DateTime? _installMonthStart;
@@ -76,6 +77,12 @@ class _SpendingHeatmapCalendarScreenState extends State<SpendingHeatmapCalendarS
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -137,11 +144,6 @@ class _SpendingHeatmapCalendarScreenState extends State<SpendingHeatmapCalendarS
           d.month == day.month &&
           d.day == day.day;
     }).toList();
-  }
-
-  double _getDayExpenseTotal(DateTime day) {
-    final list = _getExpensesForDay(day);
-    return list.fold(0.0, (sum, tx) => sum + tx.amount);
   }
 
   void _showTransactionsBottomSheet(String title, List<TransactionModel> transactions) {
@@ -219,6 +221,7 @@ class _SpendingHeatmapCalendarScreenState extends State<SpendingHeatmapCalendarS
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
               child: SingleChildScrollView(
+                controller: _scrollController,
                 padding: const EdgeInsets.all(AppSpacing.screenPadding),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -462,7 +465,7 @@ class _SpendingHeatmapCalendarScreenState extends State<SpendingHeatmapCalendarS
                       : Border.all(color: Colors.white12, width: 0.5),
                   boxShadow: [
                     BoxShadow(
-                      color: heatColor.withOpacity(0.3),
+                      color: heatColor.withValues(alpha: 0.3),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),

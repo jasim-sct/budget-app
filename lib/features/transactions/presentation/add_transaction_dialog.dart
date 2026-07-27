@@ -65,7 +65,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
     _loadBudgets();
   }
 
-  Future<void> _selectDate(BuildContext context) async {
+  Future<void> _selectDate() async {
     final installMonthStart = await UserSettingsStore.instance.getAppInstallMonthStart();
     if (!mounted) return;
 
@@ -357,14 +357,14 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
               children: [
                 Text('TRANSACTION DATE', style: AppTypography.sectionLabel(isDark)),
                 GestureDetector(
-                  onTap: () => _selectDate(context),
+                  onTap: () => _selectDate(),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryBlue.withOpacity(0.12),
+                      color: AppColors.primaryBlue.withValues(alpha: 0.12),
                       borderRadius: AppRadius.borderXs,
                       border: Border.all(
-                        color: AppColors.primaryBlue.withOpacity(0.3),
+                        color: AppColors.primaryBlue.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(

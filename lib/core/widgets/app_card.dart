@@ -58,6 +58,7 @@ class AppCard extends StatelessWidget {
       child: accentColor != null
           ? IntrinsicHeight(
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Container(
                     width: 3,

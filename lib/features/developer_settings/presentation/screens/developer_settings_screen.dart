@@ -14,9 +14,16 @@ class DeveloperSettingsScreen extends StatefulWidget {
 }
 
 class _DeveloperSettingsScreenState extends State<DeveloperSettingsScreen> {
+  final ScrollController _scrollController = ScrollController();
   bool _enableHighFpsMode = true;
   bool _enableStrictMemoryTrimming = true;
   bool _enableSqlLogging = false;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   Future<void> _vacuumDb() async {
     final db = await AppDatabase.instance.database;
@@ -37,6 +44,7 @@ class _DeveloperSettingsScreenState extends State<DeveloperSettingsScreen> {
         title: const Text('Developer & Diagnostics'),
       ),
       body: ListView(
+        controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
         children: [
           Text(

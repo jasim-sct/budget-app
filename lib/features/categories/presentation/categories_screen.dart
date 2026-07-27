@@ -20,6 +20,7 @@ class CategoriesScreen extends StatefulWidget {
 }
 
 class _CategoriesScreenState extends State<CategoriesScreen> {
+  final ScrollController _scrollController = ScrollController();
   bool _isLoading = true;
   Map<String, double> _budgetLimits = {};
 
@@ -27,6 +28,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   void initState() {
     super.initState();
     _fetchCategoriesAndBudgets();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchCategoriesAndBudgets() async {
@@ -110,6 +117,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             valueListenable: CategoryRepository.instance.usedCategoryNamesNotifier,
             builder: (context, usedCategories, _) {
               return ListView.builder(
+                controller: _scrollController,
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
                 itemCount: categories.length,
                 itemBuilder: (context, index) {

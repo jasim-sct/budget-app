@@ -162,6 +162,8 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
                   Checkbox(
                     value: pageItems.isNotEmpty && _selectedItems.containsAll(pageItems),
                     onChanged: (_) => _toggleSelectAll(pageItems),
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ...widget.columns.asMap().entries.map((entry) {
                   final idx = entry.key;
@@ -228,6 +230,8 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
                           Checkbox(
                             value: isSelected,
                             onChanged: (_) => _toggleSelectItem(item),
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
                         ...widget.columns.map((col) {
                           return Expanded(

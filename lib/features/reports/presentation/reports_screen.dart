@@ -24,6 +24,9 @@ class ReportsScreen extends StatefulWidget {
 class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProviderStateMixin {
   final DatabaseHelper _db = DatabaseHelper.instance;
   late final TabController _tabController;
+  final ScrollController _summaryScrollController = ScrollController();
+  final ScrollController _pnlScrollController = ScrollController();
+  final ScrollController _cashFlowScrollController = ScrollController();
 
   Map<String, double> _summary = {'income': 0.0, 'expense': 0.0};
   List<Map<String, dynamic>> _breakdown = [];
@@ -33,13 +36,32 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_onTabChanged);
     MonthSelectorController.instance.addListener(_loadReportData);
     _loadReportData();
   }
 
+  void _onTabChanged() {
+    final controller = switch (_tabController.index) {
+      0 => _summaryScrollController,
+      1 => _pnlScrollController,
+      2 => _cashFlowScrollController,
+      _ => null,
+    };
+    if (controller != null && controller.hasClients) {
+      if (controller.offset > 0.0) {
+        controller.jumpTo(0.0);
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
+    _summaryScrollController.dispose();
+    _pnlScrollController.dispose();
+    _cashFlowScrollController.dispose();
     MonthSelectorController.instance.removeListener(_loadReportData);
     super.dispose();
   }
@@ -114,6 +136,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
         children: [
           // 1. Summary Tab (Scan-First Conclusions First)
           ListView(
+            controller: _summaryScrollController,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
             children: [
               const MonthSelectorBar(),
@@ -326,6 +349,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
           // 2. Income Statement Tab
           ListView(
+            controller: _pnlScrollController,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
             children: [
               const MonthSelectorBar(),
@@ -349,6 +373,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
           // 3. Cash Flow Statement Tab
           ListView(
+            controller: _cashFlowScrollController,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
             children: [
               const MonthSelectorBar(),

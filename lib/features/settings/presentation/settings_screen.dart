@@ -16,17 +16,29 @@ import '../../authentication/presentation/screens/pin_lock_screen.dart';
 import '../../developer_settings/presentation/screens/developer_settings_screen.dart';
 import '../../onboarding/application/walkthrough_story_controller.dart';
 import '../../transactions/data/transaction_repository.dart';
-import '../../transactions/domain/transaction_model.dart';
 import 'widgets/detached_storage_card.dart';
 
 /// Profile & Settings Screen.
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   final TransactionRepository repository;
 
   const SettingsScreen({
     super.key,
     required this.repository,
   });
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   Future<void> _vacuumDatabase(BuildContext context) async {
     final db = await DatabaseHelper.instance.database;
@@ -273,7 +285,7 @@ class SettingsScreen extends StatelessWidget {
     try {
       final restored = await BackupFileService.instance.restoreFromFiles();
       if (restored) {
-        await repository.loadInitialData();
+        await widget.repository.loadInitialData();
       }
       if (!context.mounted) return;
       if (restored) {
@@ -342,7 +354,7 @@ class SettingsScreen extends StatelessWidget {
     );
 
     if (confirmed == true) {
-      await repository.clearAll();
+      await widget.repository.clearAll();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -363,6 +375,7 @@ class SettingsScreen extends StatelessWidget {
         title: const Text('Profile & Settings'),
       ),
       body: ListView(
+        controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
         children: [
           // Profile Header Card — tap to edit your name

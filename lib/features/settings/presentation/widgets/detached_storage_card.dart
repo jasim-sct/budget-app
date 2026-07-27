@@ -62,7 +62,7 @@ class _DetachedStorageCardState extends State<DetachedStorageCard> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.incomeGreen.withOpacity(0.15),
+                    color: AppColors.incomeGreen.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -90,10 +90,10 @@ class _DetachedStorageCardState extends State<DetachedStorageCard> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.incomeGreen.withOpacity(0.2),
+                              color: AppColors.incomeGreen.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(4),
                               border: Border.all(
-                                color: AppColors.incomeGreen.withOpacity(0.4),
+                                color: AppColors.incomeGreen.withValues(alpha: 0.4),
                               ),
                             ),
                             child: const Text(
@@ -132,7 +132,7 @@ class _DetachedStorageCardState extends State<DetachedStorageCard> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 8),
               decoration: BoxDecoration(
-                color: isDark ? Colors.black26 : Colors.black.withOpacity(0.04),
+                color: isDark ? Colors.black26 : Colors.black.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
                   color: isDark ? Colors.white10 : Colors.black12,

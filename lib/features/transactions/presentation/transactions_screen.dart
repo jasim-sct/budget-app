@@ -17,10 +17,12 @@ import 'widgets/transaction_item_tile.dart';
 /// Users think: "What happened with my money?"
 class TransactionsScreen extends StatefulWidget {
   final TransactionRepository repository;
+  final ScrollController? scrollController;
 
   const TransactionsScreen({
     super.key,
     required this.repository,
+    this.scrollController,
   });
 
   @override
@@ -33,7 +35,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
+    _scrollController = widget.scrollController ?? ScrollController();
     _scrollController.addListener(_onScroll);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -47,7 +49,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   void dispose() {
     GlobalFilterController.instance.filterNotifier.removeListener(_onFilterChanged);
     _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
+    if (widget.scrollController == null) {
+      _scrollController.dispose();
+    }
     super.dispose();
   }
 

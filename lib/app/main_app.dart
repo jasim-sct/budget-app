@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../core/database/app_database.dart';
 import '../core/database/database_helper.dart';
@@ -32,6 +33,20 @@ import '../features/transactions/domain/transaction_model.dart';
 import '../features/transactions/presentation/add_transaction_dialog.dart';
 import '../features/transactions/presentation/transactions_screen.dart';
 
+/// Enables drag and swipe gestures across mouse, touch, trackpad, and stylus devices on Linux/Desktop.
+class AppScrollBehavior extends MaterialScrollBehavior {
+  const AppScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.unknown,
+      };
+}
+
 class CommercialBudgetApp extends StatelessWidget {
   const CommercialBudgetApp({super.key});
 
@@ -46,6 +61,7 @@ class CommercialBudgetApp extends StatelessWidget {
             return MaterialApp(
               title: 'MJSM',
               debugShowCheckedModeBanner: false,
+              scrollBehavior: const AppScrollBehavior(),
               theme: AppTheme.lightTheme,
               darkTheme: AppTheme.darkTheme,
               themeMode: themeMode,
@@ -72,6 +88,11 @@ class _MainAppShellState extends State<_MainAppShell> {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
 
+  final ScrollController _dashboardScrollController = ScrollController();
+  final ScrollController _transactionsScrollController = ScrollController();
+  final ScrollController _budgetsScrollController = ScrollController();
+  final ScrollController _accountsScrollController = ScrollController();
+
   late final TransactionRepository _transactionRepository;
   late final AccountsController _accountsController;
   late final BudgetsController _budgetsController;
@@ -79,6 +100,7 @@ class _MainAppShellState extends State<_MainAppShell> {
   @override
   void initState() {
     super.initState();
+
     final db = AppDatabase.instance;
     _transactionRepository = TransactionRepository();
 
@@ -90,6 +112,21 @@ class _MainAppShellState extends State<_MainAppShell> {
     _budgetsController = BudgetsController(budgetDao);
 
     _loadPersistedSettings();
+  }
+
+  void _resetPageScroll(int index) {
+    final controller = switch (index) {
+      0 => _dashboardScrollController,
+      1 => _transactionsScrollController,
+      2 => _budgetsScrollController,
+      3 => _accountsScrollController,
+      _ => null,
+    };
+    if (controller != null && controller.hasClients) {
+      if (controller.offset > 0.0) {
+        controller.jumpTo(0.0);
+      }
+    }
   }
 
   Future<void> _loadPersistedSettings() async {
@@ -108,6 +145,7 @@ class _MainAppShellState extends State<_MainAppShell> {
   }
 
   void _goToTab(int index) {
+    _resetPageScroll(index);
     if (_pageController.hasClients) {
       _pageController.animateToPage(
         index,
@@ -122,6 +160,10 @@ class _MainAppShellState extends State<_MainAppShell> {
   @override
   void dispose() {
     _pageController.dispose();
+    _dashboardScrollController.dispose();
+    _transactionsScrollController.dispose();
+    _budgetsScrollController.dispose();
+    _accountsScrollController.dispose();
     super.dispose();
   }
 
@@ -169,6 +211,7 @@ class _MainAppShellState extends State<_MainAppShell> {
         initialPeriod: BudgetPeriodType.monthly,
         onSubmit: (budget) async {
           await _budgetsController.saveBudget(budget);
+          if (!mounted) return;
           FeedbackToast.show(
             context,
             message: 'Budget allocated for ${budget.name}.',
@@ -278,21 +321,40 @@ class _MainAppShellState extends State<_MainAppShell> {
       extendBody: false,
       body: PageView(
         controller: _pageController,
-        physics: const BouncingScrollPhysics(),
-        onPageChanged: (index) => setState(() => _currentIndex = index),
+        physics: const BouncingScrollPhysics(parent: PageScrollPhysics()),
+        onPageChanged: (index) {
+          _resetPageScroll(index);
+          setState(() => _currentIndex = index);
+        },
         children: [
           _KeepAlivePage(
             child: DashboardScreen(
               repository: _transactionRepository,
+              scrollController: _dashboardScrollController,
               onNavigateToLedger: () => _goToTab(1),
               onNavigateToWallets: () => _goToTab(3),
               onNavigateToBudgets: () => _goToTab(2),
               onNavigateToAnalytics: () => _goToTab(2),
             ),
           ),
-          _KeepAlivePage(child: TransactionsScreen(repository: _transactionRepository)),
-          _KeepAlivePage(child: BudgetsScreen(controller: _budgetsController)),
-          _KeepAlivePage(child: AccountsScreen(controller: _accountsController)),
+          _KeepAlivePage(
+            child: TransactionsScreen(
+              repository: _transactionRepository,
+              scrollController: _transactionsScrollController,
+            ),
+          ),
+          _KeepAlivePage(
+            child: BudgetsScreen(
+              controller: _budgetsController,
+              scrollController: _budgetsScrollController,
+            ),
+          ),
+          _KeepAlivePage(
+            child: AccountsScreen(
+              controller: _accountsController,
+              scrollController: _accountsScrollController,
+            ),
+          ),
         ],
       ),
       bottomNavigationBar: Column(

@@ -22,7 +22,11 @@ class CategoryRepository {
   Future<void> loadCategories() async {
     // Collapse any historical name-duplicates before reading the list.
     await _db.dedupeCategoriesByName();
-    final rawList = await _db.getAllCategories();
+    var rawList = await _db.getAllCategories();
+    if (rawList.isEmpty) {
+      await _seedDefaultCategories();
+      rawList = await _db.getAllCategories();
+    }
     final models = rawList.map((map) => CategoryModel.fromMap(map)).toList();
     categoriesNotifier.update(models);
 

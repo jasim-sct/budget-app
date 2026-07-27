@@ -17,10 +17,12 @@ import '../modals/account_detail_modal.dart';
 /// Calm, clear view of accounts and net worth.
 class AccountsScreen extends StatefulWidget {
   final AccountsController controller;
+  final ScrollController? scrollController;
 
   const AccountsScreen({
     super.key,
     required this.controller,
+    this.scrollController,
   });
 
   @override
@@ -28,11 +30,22 @@ class AccountsScreen extends StatefulWidget {
 }
 
 class _AccountsScreenState extends State<AccountsScreen> {
+  late final ScrollController _scrollController;
+
   @override
   void initState() {
     super.initState();
+    _scrollController = widget.scrollController ?? ScrollController();
     widget.controller.loadAccounts();
     FinancialCalculationEngine.instance.recalculate();
+  }
+
+  @override
+  void dispose() {
+    if (widget.scrollController == null) {
+      _scrollController.dispose();
+    }
+    super.dispose();
   }
 
   void _showAddAccountModal() {
@@ -70,6 +83,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
               }
 
               return ListView(
+                controller: _scrollController,
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.screenPadding,
                   vertical: AppSpacing.sm,

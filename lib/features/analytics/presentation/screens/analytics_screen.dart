@@ -28,6 +28,7 @@ class AnalyticsScreen extends StatefulWidget {
 }
 
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
+  final ScrollController _scrollController = ScrollController();
   String _selectedPeriod = 'Monthly';
   IntentDecisionState? _intentState;
   bool _showNarrativeDetails = false;
@@ -36,6 +37,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   void initState() {
     super.initState();
     _loadIntent();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadIntent() async {
@@ -99,6 +106,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           final isSavingsOnTrack = metrics.savingsRate >= 0.20;
 
           return ListView(
+            controller: _scrollController,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
             children: [
               const MonthSelectorBar(),

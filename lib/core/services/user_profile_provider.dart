@@ -9,7 +9,7 @@ class UserProfileProvider extends ValueNotifier<String> {
   static const String defaultName = 'Friend';
   static final UserProfileProvider instance = UserProfileProvider();
 
-  /// First name only, for the greeting ("Good Evening, <first>").
+  /// First name only, for the greeting ("Good Evening, `<first>`").
   String get firstName => value.trim().split(' ').first;
 
   /// Up-to-two-letter initials for avatars.

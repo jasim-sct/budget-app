@@ -58,8 +58,8 @@ class GlassBottomBar extends StatelessWidget {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => onTap(index),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Stack(
+                    alignment: Alignment.topCenter,
                     children: [
                       // Active indicator line
                       AnimatedContainer(
@@ -67,26 +67,33 @@ class GlassBottomBar extends StatelessWidget {
                         curve: Curves.easeOutCubic,
                         height: 2,
                         width: isSelected ? 24 : 0,
-                        margin: const EdgeInsets.only(bottom: 4),
                         decoration: BoxDecoration(
                           color: isSelected ? AppColors.primaryBlue : Colors.transparent,
                           borderRadius: BorderRadius.circular(1),
                         ),
                       ),
-                      Icon(
-                        isSelected ? item.activeIcon : item.icon,
-                        size: 22,
-                        color: color,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        item.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                          color: color,
+                      Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(height: 2),
+                            Icon(
+                              isSelected ? item.activeIcon : item.icon,
+                              size: 22,
+                              color: color,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              item.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                color: color,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],

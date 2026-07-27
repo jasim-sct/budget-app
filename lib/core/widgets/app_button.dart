@@ -78,6 +78,7 @@ class AppButton extends StatelessWidget {
 
     final childContent = Row(
       mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisSize: isFullWidth ? MainAxisSize.max : MainAxisSize.min,
       children: [
         if (isLoading) ...[

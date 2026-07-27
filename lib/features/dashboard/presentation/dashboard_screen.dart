@@ -27,6 +27,7 @@ class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNavigateToWallets;
   final VoidCallback? onNavigateToBudgets;
   final VoidCallback? onNavigateToAnalytics;
+  final ScrollController? scrollController;
 
   const DashboardScreen({
     super.key,
@@ -35,6 +36,7 @@ class DashboardScreen extends StatefulWidget {
     this.onNavigateToWallets,
     this.onNavigateToBudgets,
     this.onNavigateToAnalytics,
+    this.scrollController,
   });
 
   @override
@@ -42,6 +44,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  late final ScrollController _scrollController;
   bool _hideBalance = false;
   bool _isEnvelopeExpanded = false;
   IntentDecisionState? _intentState;
@@ -50,6 +53,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController = widget.scrollController ?? ScrollController();
     _timeContext = TimeContextEngine.getCurrentContext();
     _loadIntentState();
 
@@ -64,6 +68,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   void dispose() {
+    if (widget.scrollController == null) {
+      _scrollController.dispose();
+    }
     FinancialSyncService.instance.removeListener(_onFinancialMutation);
     FinancialCalculationEngine.instance.metricsNotifier.removeListener(_onFinancialMutation);
     super.dispose();
@@ -110,6 +117,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             await _loadIntentState();
           },
           child: SingleChildScrollView(
+            controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
             child: Column(

@@ -20,12 +20,19 @@ class GoalsScreen extends StatefulWidget {
 }
 
 class _GoalsScreenState extends State<GoalsScreen> {
+  final ScrollController _scrollController = ScrollController();
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _fetchGoals();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchGoals() async {
@@ -88,6 +95,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
           final totalSaved = goals.fold(0.0, (sum, g) => sum + g.currentAmount);
 
           return ListView(
+            controller: _scrollController,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
             children: [
               // TOP SCAN-FIRST SAVINGS SUMMARY

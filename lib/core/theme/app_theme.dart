@@ -22,7 +22,6 @@ abstract class AppTheme {
   static const Color darkBorderColor = AppColors.darkBorder;
 
   // ── Shared component constants ──
-  static const double _inputHeight = 48.0;
 
   static ThemeData get lightTheme {
     return ThemeData(

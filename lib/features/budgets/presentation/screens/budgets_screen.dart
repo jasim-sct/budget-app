@@ -17,10 +17,12 @@ import '../widgets/budget_envelope_card.dart';
 /// Plan Screen — "How am I spending?" (Budgets + Goals unified)
 class BudgetsScreen extends StatefulWidget {
   final BudgetsController controller;
+  final ScrollController? scrollController;
 
   const BudgetsScreen({
     super.key,
     required this.controller,
+    this.scrollController,
   });
 
   @override
@@ -28,10 +30,21 @@ class BudgetsScreen extends StatefulWidget {
 }
 
 class _BudgetsScreenState extends State<BudgetsScreen> {
+  late final ScrollController _scrollController;
+
   @override
   void initState() {
     super.initState();
+    _scrollController = widget.scrollController ?? ScrollController();
     widget.controller.loadBudgets();
+  }
+
+  @override
+  void dispose() {
+    if (widget.scrollController == null) {
+      _scrollController.dispose();
+    }
+    super.dispose();
   }
 
   void _showAddBudgetModal() {
@@ -91,6 +104,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
           final double overallRatio = totalLimit > 0 ? (totalSpent / totalLimit).clamp(0.0, 1.5) : 0.0;
 
           return ListView(
+            controller: _scrollController,
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.screenPadding,
               vertical: AppSpacing.sm,

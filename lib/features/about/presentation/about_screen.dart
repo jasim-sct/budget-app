@@ -6,8 +6,21 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_card.dart';
 
 /// About screen — app identity, version, and developer credit.
-class AboutScreen extends StatelessWidget {
+class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
+
+  @override
+  State<AboutScreen> createState() => _AboutScreenState();
+}
+
+class _AboutScreenState extends State<AboutScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +31,7 @@ class AboutScreen extends StatelessWidget {
         title: const Text('About'),
       ),
       body: ListView(
+        controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
         children: [
           const SizedBox(height: AppSpacing.lg),
